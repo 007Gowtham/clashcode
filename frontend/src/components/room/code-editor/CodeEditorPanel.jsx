@@ -1,0 +1,486 @@
+'use client';
+
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Code2,
+  Loader2,
+  Lock,
+  Play,
+  RotateCcw,
+  Scan,
+  Square,
+  Terminal,
+  X,
+} from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
+
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
+
+const LANGUAGES = [
+  { value: 'python', label: 'Python 3' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+];
+
+/* ─── Editor Header (Code tab + collapse toggle) ─── */
+function EditorHeader({ collapsed, onToggleCollapse }) {
+  return (
+    <div className="flex items-center justify-between px-2 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0">
+      <div className="flex gap-1">
+        <button className="relative flex items-center gap-2 px-3 py-2 text-gray-900">
+          <Code2 className="w-4 h-4 stroke-[1.5] text-green-600" />
+          <span className="text-[13px] font-semibold">Code</span>
+          {!collapsed && <span className="absolute left-2 right-2 -bottom-[1px] h-0.5 rounded-full bg-gray-900" />}
+        </button>
+      </div>
+      <button
+        onClick={onToggleCollapse}
+        className="p-1.5 mr-1 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+        title={collapsed ? 'Expand Editor' : 'Collapse Editor'}
+      >
+        {collapsed
+          ? <ChevronDown className="w-4 h-4 stroke-[1.5]" />
+          : <ChevronUp className="w-4 h-4 stroke-[1.5]" />}
+      </button>
+    </div>
+  );
+}
+
+/* ─── Editor Toolbar ─── */
+function EditorToolbar({ language, onLanguageChange, onReset }) {
+  const [open, setOpen] = useState(false);
+  const current = LANGUAGES.find(l => l.value === language) || LANGUAGES[0];
+
+  return (
+    <div className="flex items-center justify-between p-2 px-3 border-b border-gray-100 bg-white shrink-0">
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <button
+            onClick={() => setOpen(p => !p)}
+            className="flex items-center gap-2 text-xs font-medium text-gray-600 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+          >
+            {current.label}
+            <ChevronDown className="w-3 h-3 stroke-[1.5]" />
+          </button>
+          {open && (
+            <div className="absolute top-full left-0 mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+              {LANGUAGES.map(l => (
+                <button
+                  key={l.value}
+                  onClick={() => { onLanguageChange(l.value); setOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors ${l.value === language ? 'text-blue-600 bg-blue-50/50' : 'text-gray-700'
+                    }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${l.value === language ? 'bg-blue-500' : 'bg-transparent'}`} />
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1 text-xs text-gray-400">
+          <Lock className="w-3 h-3 stroke-[1.5]" />
+          <span>Auto</span>
+        </div>
+      </div>
+      <button onClick={onReset} title="Reset" className="text-gray-400 hover:text-gray-600 transition-colors">
+        <RotateCcw className="w-4 h-4 stroke-[1.5]" />
+      </button>
+    </div>
+  );
+}
+
+/* ─── Editor Footer ─── */
+function EditorFooter({ language }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-1 bg-white border-t border-gray-100 text-[10px] text-gray-400 tracking-wide shrink-0">
+      <span>Auto-saved</span>
+      <span className="uppercase font-medium">{language}</span>
+    </div>
+  );
+}
+
+/* ─── Results Header (Testcase / Test Result tabs + collapse toggle) ─── */
+function ResultsHeader({ activeView, onViewChange, collapsed, onToggleCollapse }) {
+  const tabs = [
+    { id: 'result', label: 'Test Result', icon: Terminal, color: 'text-green-600' },
+  ];
+  return (
+    <div className={cn(
+      'flex items-center justify-between px-4 shrink-0',
+      collapsed ? 'py-2 border-t border-slate-200 bg-white' : 'pt-2 border-b border-slate-200 bg-slate-50/80'
+    )}>
+      <div className="flex gap-1">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => onViewChange(tab.id)}
+            className={cn(
+              'flex items-center gap-2 px-3 text-sm font-medium transition-all relative',
+              collapsed ? 'py-1.5' : 'py-2',
+              activeView === tab.id && !collapsed
+                ? 'text-gray-900 border-b-2 border-gray-500'
+                : 'text-gray-500 border-b-2 border-transparent hover:text-gray-700'
+            )}
+          >
+            <tab.icon className={cn('w-4 h-4 stroke-[1.5]', tab.color)} />
+            <span className="text-[13px] font-semibold">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1">
+        {!collapsed && (
+          <button className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors" title="Full Screen">
+            <Scan className="w-4 h-4 stroke-[1.5]" />
+          </button>
+        )}
+        <button
+          onClick={onToggleCollapse}
+          className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+          title={collapsed ? 'Expand Results' : 'Collapse Results'}
+        >
+          {collapsed
+            ? <ChevronUp className="w-4 h-4 stroke-[1.5]" />
+            : <ChevronDown className="w-4 h-4 stroke-[1.5]" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Submission Status Banner ─── */
+function StatusBanner({ isRunning, isSubmitting, verdict, testResults }) {
+  const loading = isRunning || isSubmitting;
+  if (loading) {
+    return (
+      <div className="mb-4 rounded-xl border px-3.5 py-2.5 text-xs flex items-center gap-2 bg-slate-50 border-slate-200 text-slate-600">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        <span className="font-semibold">{isSubmitting ? 'Submitting...' : 'Running...'}</span>
+      </div>
+    );
+  }
+  if (testResults?.length > 0) {
+    const passed = testResults.filter(r => r.pass).length;
+    const all = testResults.length;
+    const ok = passed === all;
+    return (
+      <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs flex items-center justify-between ${ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+        <div className="flex items-center gap-2">
+          <span>{ok ? '✅' : '❌'}</span>
+          <span className="font-semibold">{ok ? (verdict || 'All Tests Passed') : (verdict || 'Tests Failed')}</span>
+        </div>
+        <span className="text-[11px] opacity-70">{passed}/{all} passed</span>
+      </div>
+    );
+  }
+  if (verdict) {
+    const ok = verdict === 'ACCEPTED';
+    return (
+      <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs flex items-center gap-2 ${ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+        <span>{ok ? '✅' : '❌'}</span>
+        <span className="font-semibold">{verdict}</span>
+      </div>
+    );
+  }
+  return null;
+}
+
+/* ─── Results Content ─── */
+function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict }) {
+  const [activeCase, setActiveCase] = useState(0);
+
+  const cases = (testResults || []).map((r, i) => ({
+    label: r.isHidden ? `Hidden ${i + 1}` : `Case ${i + 1}`,
+    pass: r.pass ?? (r.status === 'PASSED'),
+    input: r.input,
+    actualOutput: r.actualOutput,
+    expectedOutput: r.expectedOutput,
+    error: r.error,
+  }));
+
+  const current = cases[activeCase];
+
+  return (
+    <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+      <StatusBanner
+        isRunning={isRunning}
+        isSubmitting={isSubmitting}
+        verdict={verdict}
+        testResults={cases}
+      />
+
+      {cases.length > 0 ? (
+        <>
+          {/* Case tabs */}
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            {cases.map((c, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveCase(i)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+                  activeCase === i ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
+                )}
+              >
+                {c.pass != null && (
+                  <div className={cn('rounded-[3px] w-3.5 h-3.5 flex items-center justify-center shrink-0', c.pass ? 'bg-green-500' : 'bg-red-500')}>
+                    {c.pass ? <Check className="w-2.5 h-2.5 text-white stroke-[3]" /> : <X className="w-2.5 h-2.5 text-white stroke-[3]" />}
+                  </div>
+                )}
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {current?.input != null && (
+              <div>
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1.5">Input</div>
+                <div className="bg-gray-100/60 rounded-lg p-3 font-mono text-sm text-gray-900 whitespace-pre-wrap">{current.input}</div>
+              </div>
+            )}
+            {current?.actualOutput != null && (
+              <div>
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1.5">Output</div>
+                <div className={cn('rounded-lg p-3 font-mono text-sm whitespace-pre-wrap', current.pass ? 'bg-gray-100/60 text-gray-900' : 'bg-red-50 border border-red-200 text-red-700')}>
+                  {current.actualOutput || '(no output)'}
+                </div>
+              </div>
+            )}
+            {current?.expectedOutput != null && (
+              <div>
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1.5">Expected</div>
+                <div className="bg-gray-100/60 rounded-lg p-3 font-mono text-sm text-gray-900 whitespace-pre-wrap">{current.expectedOutput}</div>
+              </div>
+            )}
+            {current?.error && (
+              <div>
+                <div className="text-xs text-red-500 font-medium uppercase tracking-wider mb-1.5">Runtime Error</div>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 font-mono text-xs text-red-700 whitespace-pre-wrap">{current.error}</div>
+              </div>
+            )}
+          </div>
+        </>
+      ) : output?.consoleOutput ? (
+        <div>
+          <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1.5">Console Output</div>
+          <div className="bg-gray-100/60 rounded-lg p-3 font-mono text-sm text-gray-900 whitespace-pre-wrap">{output.consoleOutput}</div>
+        </div>
+      ) : !isRunning && !isSubmitting ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Terminal className="w-8 h-8 text-gray-300 mb-3" />
+          <p className="text-sm font-medium text-gray-500">Run your code to see results</p>
+          <p className="text-xs text-gray-400 mt-1">Click Run to test your solution</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* ─── Run / Submit Bar ─── */
+function RunBar({ onRun, onSubmit, isRunning, isSubmitting }) {
+  const loading = isRunning || isSubmitting;
+  return (
+    <div className="flex items-center justify-end gap-3 px-4 py-2.5 bg-white border-t border-gray-100 shrink-0">
+      <button
+        onClick={onRun}
+        disabled={loading}
+        className="flex items-center gap-2 px-4 py-1.5 bg-white border border-emerald-200 text-gray-700 rounded-xl text-xs font-bold hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isRunning
+          ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+          : <Play className="w-3.5 h-3.5 fill-gray-400 text-gray-400" />}
+        {isRunning ? 'Running...' : 'Run'}
+      </button>
+      <button
+        onClick={onSubmit}
+        disabled={loading}
+        className="flex items-center gap-2 px-5 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-px"
+      >
+        {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+        {isSubmitting ? 'Submitting...' : 'Submit'}
+      </button>
+    </div>
+  );
+}
+
+/* ─── Drag Divider ─── */
+function DragDivider({ onDrag }) {
+  const dragging = useRef(false);
+
+  const onMouseDown = useCallback((e) => {
+    dragging.current = true;
+    e.preventDefault();
+
+    const onMouseMove = (ev) => {
+      if (dragging.current) onDrag(ev.clientY);
+    };
+    const onMouseUp = () => {
+      dragging.current = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [onDrag]);
+
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="h-1.5 bg-gray-100 hover:bg-emerald-400/30 cursor-row-resize shrink-0 transition-colors select-none"
+    />
+  );
+}
+
+/* ─── Main CodeEditorPanel ─── */
+export default function CodeEditorPanel({
+  code,
+  setCode,
+  language,
+  onLanguageChange,
+  onRun,
+  onSubmit,
+  onResetCode,
+  isRunning,
+  isSubmitting,
+  output,
+  testResults,
+  verdict,
+  style,
+}) {
+  const editorRef = useRef(null);
+  const containerRef = useRef(null);
+  const [editorCollapsed, setEditorCollapsed] = useState(false);
+  const [resultsCollapsed, setResultsCollapsed] = useState(false);
+  const [activeView, setActiveView] = useState('result');
+  // editorHeightPct: percentage of the body area taken by Monaco editor
+  const [editorPct, setEditorPct] = useState(65);
+
+  // Auto-expand results when we get run/submit data
+  useEffect(() => {
+    if (isRunning || isSubmitting || (testResults && testResults.length > 0) || verdict) {
+      setResultsCollapsed(false);
+    }
+  }, [isRunning, isSubmitting, testResults, verdict]);
+
+  const handleRun = () => {
+    const currentCode = editorRef.current?.getValue() || code;
+    if (onRun) onRun(currentCode, '');
+  };
+
+  const handleSubmit = () => {
+    const currentCode = editorRef.current?.getValue() || code;
+    if (onSubmit) onSubmit(currentCode);
+  };
+
+  const handleDrag = useCallback((clientY) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const pct = ((clientY - rect.top) / rect.height) * 100;
+    setEditorPct(Math.min(85, Math.max(15, pct)));
+  }, []);
+
+  // Determine flex sizing
+  // If editor collapsed → results takes all; if results collapsed → editor takes all
+  const editorStyle = editorCollapsed
+    ? { height: 0, overflow: 'hidden' }
+    : resultsCollapsed
+      ? { flex: 1, overflow: 'hidden' }
+      : { height: `${editorPct}%`, flexShrink: 0 };
+
+  const resultsStyle = resultsCollapsed
+    ? {} // header-only; auto height
+    : editorCollapsed
+      ? { flex: 1, overflow: 'hidden' }
+      : { flex: 1, minHeight: 0, overflow: 'hidden' };
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden bg-white" style={style}>
+
+      {/* ── Editor Header (always visible) ── */}
+      <EditorHeader
+        collapsed={editorCollapsed}
+        onToggleCollapse={() => setEditorCollapsed(p => !p)}
+      />
+
+      {/* ── Editor Toolbar (hide when collapsed) ── */}
+      {!editorCollapsed && (
+        <EditorToolbar
+          language={language}
+          onLanguageChange={onLanguageChange}
+          onReset={() => { if (onResetCode) onResetCode(); }}
+        />
+      )}
+
+      {/* ── Body: editor + divider + results ── */}
+      <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden min-h-0">
+
+        {/* Monaco Editor area */}
+        <div className="flex flex-col overflow-hidden" style={editorStyle}>
+          <div className="flex-1 relative overflow-hidden">
+            <MonacoEditor
+              height="100%"
+              language={language || 'python'}
+              value={code || ''}
+              onChange={(val) => { if (setCode && val !== undefined) setCode(val); }}
+              onMount={(editor) => { editorRef.current = editor; }}
+              theme="vs"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                wordWrap: 'on',
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+                fontLigatures: true,
+                padding: { top: 12, bottom: 12 },
+                scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
+                suggest: { enabled: true },
+                quickSuggestions: true,
+              }}
+            />
+          </div>
+          <EditorFooter language={language} />
+        </div>
+
+        {/* Drag divider — only when both visible */}
+        {!editorCollapsed && !resultsCollapsed && (
+          <DragDivider onDrag={handleDrag} />
+        )}
+
+        {/* Results Panel */}
+        <div className="flex flex-col overflow-hidden" style={resultsStyle}>
+          <ResultsHeader
+            activeView={activeView}
+            onViewChange={setActiveView}
+            collapsed={resultsCollapsed}
+            onToggleCollapse={() => setResultsCollapsed(p => !p)}
+          />
+          {!resultsCollapsed && (
+            <ResultsContent
+              isRunning={isRunning}
+              isSubmitting={isSubmitting}
+              output={output}
+              testResults={testResults}
+              verdict={verdict}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── Run / Submit bar (always visible) ── */}
+      <RunBar
+        onRun={handleRun}
+        onSubmit={handleSubmit}
+        isRunning={isRunning}
+        isSubmitting={isSubmitting}
+      />
+    </div>
+  );
+}
