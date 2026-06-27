@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import Link from 'next/link';
 import api from '@/lib/axios';
@@ -10,24 +10,42 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import { PageTransition } from '@/components/common/PageTransition';
 
-export default function LoginPage() {
+// Inner component that safely uses useSearchParams (must be inside Suspense)
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams && searchParams.get('verified') === 'true') {
+      setInfo('Email verified successfully! Please sign in with your credentials.');
+    }
+  }, [searchParams]);
 
   const handle = e => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const submit = async e => {
     e.preventDefault();
-    setError(''); setLoading(true);
+    setError(''); setInfo(''); setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', form);
-      dispatch(setCredentials(data));
-      router.push('/rooms');
+      const response = await api.post('/auth/login', form);
+      const resData = response.data;
+      if (resData.success && resData.data) {
+        dispatch(setCredentials({
+          token:        resData.data.accessToken,
+          refreshToken: resData.data.refreshToken,
+          user:         resData.data.user,
+        }));
+        router.push('/rooms');
+      } else {
+        setError(resData.message || 'Login failed');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Login failed');
     } finally { setLoading(false); }
   };
 
@@ -49,6 +67,7 @@ export default function LoginPage() {
 
           <AuthTabs activeTab="signin" />
 
+          {info && <div className="bg-green-50 border border-green-100 text-green-600 rounded-xl px-4 py-3 mb-6 text-xs font-semibold">{info}</div>}
           {error && <div className="bg-red-50 border border-red-100 text-red-500 rounded-xl px-4 py-3 mb-6 text-xs font-semibold">{error}</div>}
 
           <form onSubmit={submit} className="space-y-6">
@@ -75,7 +94,7 @@ export default function LoginPage() {
             />
 
             <div className="flex justify-end !mt-2">
-              <Link href="/forgot-password" title="Coming soon!" className="text-[10px] font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest">Forgot password?</Link>
+              <Link href="/forgot-password" className="text-[10px] font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest">Forgot password?</Link>
             </div>
 
             <Button
@@ -96,5 +115,14 @@ export default function LoginPage() {
         </div>
       </PageTransition>
     </div>
+  );
+}
+
+// Wrap in Suspense — required by Next.js for components that call useSearchParams()
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

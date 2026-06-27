@@ -1,0 +1,70 @@
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # PostgreSQL — matches application-dev.yml defaults exactly:
+  #   DB_HOST=postgres  DB_PORT=5432  DB_NAME=clashcode
+  #   DB_USER=postgres  DB_PASSWORD=password
+  # ─────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: clashcode-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB:       clashcode
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d clashcode"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Spring Boot app
+  # Build context is the dsa-multiplayer folder (where pom.xml lives)
+  # ─────────────────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clashcode-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST:     postgres
+      DB_PORT:     5432
+      DB_NAME:     clashcode
+      DB_USER:     postgres
+      DB_PASSWORD: password
+      JWT_SECRET:  ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      SERVER_PORT: 5000
+      CLIENT_URL:  ${CLIENT_URL:-http://localhost:3000}
+      # SMTP — set these env vars for real email; leave blank for dev console logging
+      SMTP_HOST:   ${SMTP_HOST:-localhost}
+      SMTP_PORT:   ${SMTP_PORT:-1025}
+      SMTP_USER:   ${SMTP_USER:-}
+      SMTP_PASS:   ${SMTP_PASS:-}
+
+volumes:
+  postgres_data:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Sandbox runner images — built once, used on-demand by SandboxService.
+  # These are NOT long-running services. The Spring Boot app spawns ephemeral
+  # `docker run --rm clashcode/<lang>:runner` containers per submission.
+  #
+  # To build / rebuild all runners:
+  #   docker-compose --profile sandbox build
+  #   — or —
+  #   powershell -File backend/docker/runners/build-runners.ps1
+  # ─────────────────────────────────────────────────────────────────────────
+

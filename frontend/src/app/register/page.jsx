@@ -32,7 +32,7 @@ export default function RegisterPage() {
       setEmail(form.email);
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Registration failed');
     } finally { setLoading(false); }
   };
 
@@ -40,16 +40,20 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const { data } = await api.post('/auth/verify', { email, code });
-      dispatch(setCredentials(data));
-      router.push('/rooms');
+      await api.post('/auth/verify', { email, code });
+      router.push('/login?verified=true');
     } catch (err) {
-      setError(err.response?.data?.error || 'Verification failed');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Verification failed');
     } finally { setLoading(false); }
   };
 
   const resend = async () => {
-    try { await api.post('/auth/resend-verification', { email }); } catch { }
+    setError('');
+    try {
+      await api.post('/auth/resend-verification', { email });
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to resend verification code');
+    }
   };
 
   return (

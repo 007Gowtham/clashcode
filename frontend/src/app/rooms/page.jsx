@@ -2,15 +2,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
-import { io } from 'socket.io-client';
 import api from '@/lib/axios';
 import { setRoom, setMyRole } from '@/store/slices/roomSlice';
 import { clearCredentials } from '@/store/slices/authSlice';
 import { cn } from '@/lib/utils';
 import {
-  Plus, LogOut, User, Users, LayoutGrid, Zap, Trophy,
-  MessageSquare, BarChart, Target, Star, Lock,
-  Globe, Search, Terminal, Activity, Layout
+ Plus, LogOut, User, Users, LayoutGrid, Zap, Trophy,
+ MessageSquare, BarChart, Target, Star, Lock,
+ Globe, Search, Terminal, Activity, Layout
 } from 'lucide-react';
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
@@ -25,317 +24,342 @@ import RoomGrid from '@/components/room/RoomGrid';
 import { RoomForm, RoomJoin } from '@/components/room';
 
 export default function RoomsPage() {
-  const router = useRouter();
-  const dispatch = useDispatch();
-  const user = useSelector(s => s.auth.user);
+ const router = useRouter();
+ const dispatch = useDispatch();
+ const user = useSelector(s => s.auth.user);
 
-  // Logic state
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterMode, setFilterMode] = useState('all'); // 'all', 'public', 'private'
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [activeRoomId, setActiveRoomId] = useState(null);
-  const [creatingRoom, setCreatingRoom] = useState(false);
-  const [joiningRoom, setJoiningRoom] = useState(false);
-  const [mounted, setMounted] = useState(false);
+ // Logic state
+ const [rooms, setRooms] = useState([]);
+ const [loading, setLoading] = useState(true);
+ const [searchTerm, setSearchTerm] = useState('');
+ const [filterMode, setFilterMode] = useState('all'); // 'all', 'public', 'private'
+ const [showCreateModal, setShowCreateModal] = useState(false);
+ const [showJoinModal, setShowJoinModal] = useState(false);
+ const [activeRoomId, setActiveRoomId] = useState(null);
+ const [creatingRoom, setCreatingRoom] = useState(false);
+ const [joiningRoom, setJoiningRoom] = useState(false);
+ const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    fetchRooms();
-    fetchMe();
-    const socketUrl = window.location.protocol + '//' + window.location.hostname + ':5000';
-    const socket = io(socketUrl);
-    socket.on('dashboard:room_created', () => fetchRooms());
-    socket.on('dashboard:room_updated', () => fetchRooms());
-    socket.on('dashboard:room_ended', () => fetchRooms());
-    socket.on('dashboard:room_started', () => fetchRooms());
-    return () => socket.disconnect();
-  }, []);
+ useEffect(() => {
+ setMounted(true);
+ fetchRooms();
+ fetchMe();
+ 
+ // Auto-poll rooms every 10 seconds
+ const interval = setInterval(() => {
+ fetchRooms();
+ }, 10000);
+ return () => clearInterval(interval);
+ }, []);
 
-  const fetchMe = async () => {
-    try {
-      const { data } = await api.get('/auth/me');
-      setActiveRoomId(data.activeRoomId);
-    } catch { }
-  };
+ const fetchMe = async () => {
+ try {
+ const response = await api.get('/auth/me');
+ const profile = response.data?.data;
+ if (profile) {
+ setActiveRoomId(profile.activeRoomId || null);
+ }
+ } catch { }
+ };
 
-  const fetchRooms = async () => {
-    try {
-      const { data } = await api.get('/rooms');
-      setRooms(data || []);
-    } catch (err) {
-      console.error('Fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+ const fetchRooms = async () => {
+ try {
+ const { data } = await api.get('/rooms');
+ if (data && Array.isArray(data.data)) {
+ setRooms(data.data);
+ } else {
+ setRooms([]);
+ }
+ } catch (err) {
+ console.error('Fetch error:', err);
+ setRooms([]);
+ } finally {
+ setLoading(false);
+ }
+ };
 
-  const handleCreateRoom = async (formData) => {
-    setCreatingRoom(true);
-    try {
-      const { data } = await api.post('/rooms', {
-        name: formData.roomName,
-        difficulty: (formData.difficulty || 'MIXED').toUpperCase(),
-        timeLimitMinutes: formData.timeLimitMinutes || 30,
-        questionsPerUser: formData.questionsPerUser || 1,
-        maxTeamSize: formData.maxTeamSize || 4,
-      });
-      dispatch(setRoom(data));
-      setShowCreateModal(false);
+ const handleCreateRoom = async (formData) => {
+ setCreatingRoom(true);
+ try {
+ const { data: responseData } = await api.post('/rooms', {
+ name: formData.roomName,
+ difficulty: (formData.difficulty || 'MIXED').toUpperCase(),
+ timeLimitMinutes: formData.timeLimitMinutes || 30,
+ questionsPerUser: formData.questionsPerUser || 1,
+ maxTeamSize: formData.maxTeamSize || 4,
+ });
+ const roomObj = responseData?.data;
+ dispatch(setRoom(roomObj));
+ setShowCreateModal(false);
 
-      const targetRoomId = data._id || data.id;
-      if (!targetRoomId) throw new Error('Created room ID missing');
-      router.push(`/room/${targetRoomId}/waiting`);
-    } catch (err) {
-      console.error('Create error:', err);
-    } finally {
-      setCreatingRoom(false);
-    }
-  };
+ const targetRoomId = roomObj?._id || roomObj?.id;
+ if (!targetRoomId) throw new Error('Created room ID missing');
+ router.push(`/room/${targetRoomId}/waiting`);
+ } catch (err) {
+ console.error('Create error:', err);
+ } finally {
+ setCreatingRoom(false);
+ }
+ };
 
-  const handleJoinRoom = async (roomData) => {
-    setJoiningRoom(true);
-    const rawCode = typeof roomData === 'string' ? roomData : (roomData.code || roomData.title || roomData.name);
-    const roomCode = (rawCode || '').toString().trim();
+ const handleJoinRoom = async (roomData) => {
+ setJoiningRoom(true);
+ const rawCode = typeof roomData === 'string' ? roomData : (roomData.code || roomData.title || roomData.name);
+ const roomCode = (rawCode || '').toString().trim();
 
-    if (!roomCode) {
-      console.error('Join error: room code missing');
-      setJoiningRoom(false);
-      return;
-    }
+ if (!roomCode) {
+ console.error('Join error: room code missing');
+ setJoiningRoom(false);
+ return;
+ }
 
-    try {
-      const { data } = await api.post('/rooms/join', { code: roomCode.toUpperCase() });
-      dispatch(setRoom(data));
-      setShowJoinModal(false);
+ try {
+ const { data: responseData } = await api.post('/rooms/join', { code: roomCode.toUpperCase() });
+ const roomObj = responseData?.data;
+ dispatch(setRoom(roomObj));
+ setShowJoinModal(false);
 
-      const targetRoomId = data._id || data.id;
-      if (!targetRoomId) throw new Error('Joined room ID missing');
-      router.push(`/room/${targetRoomId}/waiting`);
-    } catch (err) {
-      console.error('Join error:', err);
-    } finally {
-      setJoiningRoom(false);
-    }
-  };
+ const targetRoomId = roomObj?._id || roomObj?.id;
+ if (!targetRoomId) throw new Error('Joined room ID missing');
+ router.push(`/room/${targetRoomId}/waiting`);
+ } catch (err) {
+ console.error('Join error:', err);
+ } finally {
+ setJoiningRoom(false);
+ }
+ };
 
-  const handleLogout = () => {
-    dispatch(clearCredentials());
-    router.push('/login');
-  };
+ const handleLogout = async () => {
+ try {
+ await api.post('/auth/logout');
+ } catch (err) {
+ console.error('Logout error:', err);
+ } finally {
+ dispatch(clearCredentials());
+ router.push('/login');
+ }
+ };
 
-  // Filter Logic
-  const filteredRooms = rooms.filter(room => {
-    const matchesSearch = room.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      room.code?.toLowerCase().includes(searchTerm.toLowerCase());
-    const isPrivate = room.settings?.privacy === 'private' || room.hasPassword;
+ // Filter Logic
+ const filteredRooms = rooms.filter(room => {
+ const matchesSearch = room.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+ room.code?.toLowerCase().includes(searchTerm.toLowerCase());
+ const isPrivate = room.settings?.privacy === 'private' || room.hasPassword;
 
-    if (filterMode === 'all') return matchesSearch;
-    if (filterMode === 'public') return matchesSearch && !isPrivate;
-    if (filterMode === 'private') return matchesSearch && isPrivate;
-    return matchesSearch;
-  });
+ if (filterMode === 'all') return matchesSearch;
+ if (filterMode === 'public') return matchesSearch && !isPrivate;
+ if (filterMode === 'private') return matchesSearch && isPrivate;
+ return matchesSearch;
+ });
 
-  // Stats Logic
-  const stats = [
-    { label: 'Total Rooms', value: rooms.length, icon: LayoutGrid },
-    { label: 'Live Battles', value: rooms.filter(r => r.status === 'PLAYING').length, icon: Zap, highlighted: true },
-    { label: 'Active Coders', value: rooms.reduce((s, r) => s + (r.teams?.length || 0), 0), icon: Users },
-    { label: 'Available', value: rooms.filter(r => r.status === 'WAITING').length, icon: Globe },
-  ];
+ // Stats Logic
+ const stats = [
+ { label: 'Total Rooms', value: rooms.length, icon: LayoutGrid },
+ { label: 'Live Battles', value: rooms.filter(r => r.status === 'PLAYING').length, icon: Zap, highlighted: true },
+ { label: 'Active Coders', value: rooms.reduce((s, r) => s + (r.teams?.length || 0), 0), icon: Users },
+ { label: 'Available', value: rooms.filter(r => r.status === 'WAITING').length, icon: Globe },
+ ];
 
-  return (
-    <div className="bg-white text-slate-900 min-h-screen flex flex-col relative antialiased font-sans overflow-hidden">
+ return (
+ <div className="bg-white text-slate-900 min-h-screen flex flex-col relative antialiased font-sans overflow-hidden">
 
-      {/* Dynamic Background */}
-      <InteractiveGridPattern
-        className={cn(
-          "absolute inset-0 top-0 h-[600px] z-0",
-          "[mask-image:linear-gradient(to_bottom,black_30%,transparent_100%),linear-gradient(to_right,transparent_0%,black_20%,black_80%,transparent_100%)]",
-          "[-webkit-mask-image:linear-gradient(to_bottom,black_30%,transparent_100%),linear-gradient(to_right,transparent_0%,black_20%,black_80%,transparent_100%)]",
-          "[mask-composite:intersect]",
-          "[-webkit-mask-composite:source-in]"
-        )}
-        width={50}
-        height={50}
-        squares={[80, 80]}
-        squaresClassName="hover:fill-green-500  transition-all duration-500"
-      />
+ {/* Dynamic Background */}
+ <InteractiveGridPattern
+ className={cn(
+ "absolute inset-0 top-0 h-[600px] z-0",
+ "[mask-image:linear-gradient(to_bottom,black_30%,transparent_100%),linear-gradient(to_right,transparent_0%,black_20%,black_80%,transparent_100%)]",
+ "[-webkit-mask-image:linear-gradient(to_bottom,black_30%,transparent_100%),linear-gradient(to_right,transparent_0%,black_20%,black_80%,transparent_100%)]",
+ "[mask-composite:intersect]",
+ "[-webkit-mask-composite:source-in]"
+ )}
+ width={50}
+ height={50}
+ squares={[80, 80]}
+ squaresClassName="hover:fill-green-500 transition-all duration-500"
+ />
 
-      {/* Radial Gradient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[600px] bg-[radial-gradient(closest-side,rgba(16,185,129,0.08),transparent)] pointer-events-none z-0"></div>
+ {/* Radial Gradient Glow */}
+ <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[600px] bg-[radial-gradient(closest-side,rgba(16,185,129,0.08),transparent)] pointer-events-none z-0"></div>
 
-      {/* Minimal Navigation Header */}
-      <header className="relative z-50 w-full px-6 py-4 flex items-center justify-between bg-transparent">
-        {/* Left: Logo icon only */}
-        <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-slate-900/10 select-none">Λ</div>
+ {/* Minimal Navigation Header */}
+ <header className="relative z-50 w-full px-6 py-4 flex items-center justify-between bg-transparent">
+ {/* Left: Logo icon only */}
+ <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center text-white font-semibold text-lg shadow-lg shadow-slate-900/10 select-none">Λ</div>
 
-        {/* Right: User profile + actions */}
-        <div className="flex items-center gap-3">
+ {/* Right: User profile + actions */}
+ <div className="flex items-center gap-3">
 
-          {/* Rejoin active room button */}
-          {activeRoomId && (
-            <button
-              onClick={() => router.push(`/room/${activeRoomId}/waiting`)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-sm hover:bg-emerald-100 transition-all active:scale-95"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              Rejoin Room
-            </button>
-          )}
+ {/* Rejoin active room button */}
+ {activeRoomId && (
+ <button
+ onClick={() => router.push(`/room/${activeRoomId}/waiting`)}
+ className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-sm hover:bg-emerald-100 transition-all active:scale-95"
+ >
+ <Zap className="w-3.5 h-3.5" />
+ Rejoin Room
+ </button>
+ )}
 
-          {/* User profile chip */}
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white/80 border border-slate-200 rounded-full shadow-sm">
-            <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-white text-[10px] font-black shrink-0">
-              {mounted ? user?.username?.charAt(0).toUpperCase() : ''}
-            </div>
-            <span className="text-sm font-semibold text-slate-800">{mounted ? user?.username : ''}</span>
-          </div>
+ {/* User profile chip */}
+ <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white/80 border border-slate-200 rounded-full shadow-sm">
+ <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-white text-[10px] font-semibold shrink-0">
+ {mounted ? user?.username?.charAt(0).toUpperCase() : ''}
+ </div>
+ <span className="text-sm font-semibold text-slate-800">{mounted ? user?.username : ''}</span>
+ </div>
 
-          {/* Red Logout button — same style as Rejoin Room */}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 font-semibold text-sm hover:bg-red-100 transition-all active:scale-95"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Logout
-          </button>
-        </div>
-      </header>
+ {/* Red Logout button — same style as Rejoin Room */}
+ <button
+ onClick={handleLogout}
+ className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 font-semibold text-sm hover:bg-red-100 transition-all active:scale-95"
+ >
+ <LogOut className="w-3.5 h-3.5" />
+ Logout
+ </button>
+ </div>
+ </header>
 
-      <main className="relative z-10 w-full max-w-5xl mx-auto px-6 pt-20 pb-24 flex flex-col items-center pointer-events-none [&>*]:pointer-events-auto">
+ <main className="relative z-10 w-full max-w-5xl mx-auto px-6 pt-20 pb-24 flex flex-col items-center pointer-events-none [&>*]:pointer-events-auto">
 
-        <RoomHeader
-          title="Clash Of Code"
-          description="Join active competitions or start your own."
-        />
+ <RoomHeader
+ title="Clash Of Code"
+ description="Join active competitions or start your own."
+ />
 
-        {/* Filter Selection Pills */}
-        <nav className="flex flex-wrap justify-center gap-4 mb-20">
-          <FilterPill active={filterMode === 'all'} onClick={() => setFilterMode('all')} icon={LayoutGrid} label="All Rooms" />
-          <FilterPill active={filterMode === 'public'} onClick={() => setFilterMode('public')} icon={Globe} label="Public" />
-          <FilterPill active={filterMode === 'private'} onClick={() => setFilterMode('private')} icon={Lock} label="Private" />
-        </nav>
+ {/* Filter Selection Pills */}
+ <nav className="flex flex-wrap justify-center gap-4 mb-20">
+ <FilterPill active={filterMode === 'all'} onClick={() => setFilterMode('all')} icon={LayoutGrid} label="All Rooms" />
+ <FilterPill active={filterMode === 'public'} onClick={() => setFilterMode('public')} icon={Globe} label="Public" />
+ <FilterPill active={filterMode === 'private'} onClick={() => setFilterMode('private')} icon={Lock} label="Private" />
+ </nav>
 
-        <div className="w-full max-w-6xl mx-auto px-4 mb-8">
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3 font-[family-name:var(--font-space)] tracking-tight">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            Arena Pulse
-          </h2>
-          <p className="text-slate-500 text-sm mt-1 ml-6 font-[family-name:var(--font-inter)]">Real-time statistics from active battlegrounds.</p>
-        </div>
+ <div className="w-full max-w-6xl mx-auto px-4 mb-8">
+ <h2 className="text-xl font-medium text-slate-900 flex items-center gap-3 ">
+ <span className="relative flex h-3 w-3">
+ <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+ <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+ </span>
+ Arena Pulse
+ </h2>
+ <p className="text-slate-500 text-sm mt-1 ml-6 ">Real-time statistics from active battlegrounds.</p>
+ </div>
 
-        <StatsOverview stats={stats} />
+ <StatsOverview stats={stats} />
 
-        <div className="w-full max-w-6xl mx-auto px-4 mb-8">
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3 font-[family-name:var(--font-space)] tracking-tight">
-            Find Your Battle
-          </h2>
-          <p className="text-slate-500 text-sm mt-1 font-[family-name:var(--font-inter)]">Join an existing room or create your own.</p>
-        </div>
+ <div className="w-full max-w-6xl mx-auto px-4 mb-8">
+ <h2 className="text-xl font-medium text-slate-900 flex items-center gap-3 ">
+ Find Your Battle
+ </h2>
+ <p className="text-slate-500 text-sm mt-1 ">Join an existing room or create your own.</p>
+ </div>
 
-        {/* Tactical Interaction Console */}
-        <div className="w-full max-w-6xl mx-auto px-4 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative group/search w-full sm:w-auto flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within/search:text-emerald-600 transition-colors" />
-            <input
-              type="text"
-              placeholder="Search rooms..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-slate-300 focus:ring-1 focus:ring-slate-300 transition-all shadow-sm"
-            />
-          </div>
+ {/* Tactical Interaction Console */}
+ <div className="w-full max-w-6xl mx-auto px-4 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+ <div className="relative group/search w-full sm:w-auto flex-1">
+ <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within/search:text-emerald-600 transition-colors" />
+ <input
+ type="text"
+ placeholder="Search rooms..."
+ value={searchTerm}
+ onChange={(e) => setSearchTerm(e.target.value)}
+ className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-slate-300 focus:ring-1 focus:ring-slate-300 transition-all shadow-sm"
+ />
+ </div>
 
-          <div className="flex gap-3 w-full sm:w-auto">
-            <button
-              onClick={() => setShowJoinModal(true)}
-              disabled={!!activeRoomId}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
-            >
-              <Terminal className="w-5 h-5 text-slate-400 group-hover:text-slate-900 transition-colors" />
-              <span>Join via Code</span>
-            </button>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              disabled={!!activeRoomId}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-sm font-medium transition-all shadow-lg shadow-slate-900/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Create Room</span>
-            </button>
-          </div>
-        </div>
+ <div className="flex gap-3 w-full sm:w-auto">
+ <button
+ onClick={() => {
+ setLoading(true);
+ fetchRooms();
+ }}
+ className="flex items-center justify-center p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition-all active:scale-95"
+ title="Refresh Rooms"
+ >
+ <Activity className={cn("w-5 h-5 text-slate-500", loading && "animate-spin")} />
+ </button>
+ <button
+ onClick={() => setShowJoinModal(true)}
+ disabled={!!activeRoomId}
+ className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
+ >
+ <Terminal className="w-5 h-5 text-slate-400 group-hover:text-slate-900 transition-colors" />
+ <span>Join via Code</span>
+ </button>
+ <button
+ onClick={() => setShowCreateModal(true)}
+ disabled={!!activeRoomId}
+ className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-sm font-medium transition-all shadow-lg shadow-slate-900/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+ >
+ <Plus className="w-5 h-5" />
+ <span>Create Room</span>
+ </button>
+ </div>
+ </div>
 
-        {/* Global Sector Listing */}
-        <div className="w-full">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-32 gap-6">
-              <div className="relative">
-                <div className="w-16 h-16 border-4 border-slate-100 rounded-full border-t-slate-900 animate-spin" />
-                <Activity className="absolute inset-0 m-auto text-slate-300 animate-pulse" size={24} />
-              </div>
-              <span className="text-sm font-medium text-slate-400 animate-pulse">Loading Rooms...</span>
-            </div>
-          ) : (
-            <RoomGrid
-              rooms={filteredRooms}
-              activeRoomId={activeRoomId}
-              onJoin={(room) => {
-                if (activeRoomId === (room._id || room.id)) {
-                  router.push(`/room/${activeRoomId}/waiting`);
-                } else if (!room.code) {
-                  // If for some reason we click a card without a code, show the modal
-                  setShowJoinModal(true);
-                } else {
-                  // Join immediately. handleJoinRoom will handle private checks on backend if needed
-                  // but for the UI flow, non-private should be seamless.
-                  handleJoinRoom(room);
-                }
-              }}
-            />
-          )}
-        </div>
-      </main>
+ {/* Global Sector Listing */}
+ <div className="w-full">
+ {loading ? (
+ <div className="flex flex-col items-center justify-center py-32 gap-6">
+ <div className="relative">
+ <div className="w-16 h-16 border-4 border-slate-100 rounded-full border-t-slate-900 animate-spin" />
+ <Activity className="absolute inset-0 m-auto text-slate-300 animate-pulse" size={24} />
+ </div>
+ <span className="text-sm font-medium text-slate-400 animate-pulse">Loading Rooms...</span>
+ </div>
+ ) : (
+ <RoomGrid
+ rooms={filteredRooms}
+ activeRoomId={activeRoomId}
+ onJoin={(room) => {
+ if (activeRoomId === (room._id || room.id)) {
+ router.push(`/room/${activeRoomId}/waiting`);
+ } else if (!room.code) {
+ // If for some reason we click a card without a code, show the modal
+ setShowJoinModal(true);
+ } else {
+ // Join immediately. handleJoinRoom will handle private checks on backend if needed
+ // but for the UI flow, non-private should be seamless.
+ handleJoinRoom(room);
+ }
+ }}
+ />
+ )}
+ </div>
+ </main>
 
-      {/* Global Modals */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create New Room" maxWidth="max-w-xl">
-        <RoomForm onSubmit={handleCreateRoom} isLoading={creatingRoom} />
-      </Modal>
+ {/* Global Modals */}
+ <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create New Room" maxWidth="max-w-xl">
+ <RoomForm onSubmit={handleCreateRoom} isLoading={creatingRoom} />
+ </Modal>
 
-      <Modal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} title="Join Private Room" maxWidth="max-w-md">
-        <RoomJoin onJoin={handleJoinRoom} isLoading={joiningRoom} />
-      </Modal>
+ <Modal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} title="Join Private Room" maxWidth="max-w-md">
+ <RoomJoin onJoin={handleJoinRoom} isLoading={joiningRoom} />
+ </Modal>
 
-    </div>
-  );
+ </div>
+ );
 }
 
 function FilterPill({ active, onClick, icon: Icon, label }) {
-  if (active) {
-    return (
-      <button
-        onClick={onClick}
-        className="group flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl shadow-slate-900/10 hover:shadow-slate-900/20 transition-all duration-200"
-      >
-        <Icon className="w-5 h-5 text-white" />
-        <span className="text-base font-medium">{label}</span>
-      </button>
-    );
-  }
+ if (active) {
+ return (
+ <button
+ onClick={onClick}
+ className="group flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl shadow-slate-900/10 hover:shadow-slate-900/20 transition-all duration-200"
+ >
+ <Icon className="w-5 h-5 text-white" />
+ <span className="text-base font-medium">{label}</span>
+ </button>
+ );
+ }
 
-  return (
-    <button
-      onClick={onClick}
-      className="group flex items-center gap-3 bg-white text-slate-600 border border-slate-200 px-6 py-3 rounded-full hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
-    >
-      <Icon className="w-5 h-5 text-current" />
-      <span className="text-base font-medium">{label}</span>
-    </button>
-  );
+ return (
+ <button
+ onClick={onClick}
+ className="group flex items-center gap-3 bg-white text-slate-600 border border-slate-200 px-6 py-3 rounded-full hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
+ >
+ <Icon className="w-5 h-5 text-current" />
+ <span className="text-base font-medium">{label}</span>
+ </button>
+ );
 }
