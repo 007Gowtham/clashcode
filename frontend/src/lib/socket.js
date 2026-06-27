@@ -3,7 +3,7 @@
 import { io } from 'socket.io-client';
 import { store } from '@/store';
 import { setSocketConnected } from '@/store/slices/socketSlice';
-import { clearAuth } from '@/store/slices/authSlice';
+import { clearCredentials } from '@/store/slices/authSlice';
 
 let socket = null;
 
@@ -26,12 +26,12 @@ export const initSocket = (accessToken) => {
   socket.on('connect_error', (err) => console.error('[Socket] connect_error', err.message));
 
   socket.on('auth:session_expired', () => {
-    store.dispatch(clearAuth());
+    store.dispatch(clearCredentials());
     window.location.href = '/login?reason=session_expired';
   });
 
   socket.on('auth:force_logout', () => {
-    store.dispatch(clearAuth());
+    store.dispatch(clearCredentials());
     window.location.href = '/login?reason=force_logout';
   });
 

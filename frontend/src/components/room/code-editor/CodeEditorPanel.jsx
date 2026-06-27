@@ -153,68 +153,62 @@ function ResultsHeader({ activeView, onViewChange, collapsed, onToggleCollapse }
   );
 }
 
-/* ─── Submission Status Banner ─── */
-function StatusBanner({ isRunning, isSubmitting, verdict, testResults }) {
-  const loading = isRunning || isSubmitting;
-  if (loading) {
-    return (
-      <div className="mb-4 rounded-xl border px-3.5 py-2.5 text-xs flex items-center gap-2 bg-slate-50 border-slate-200 text-slate-600">
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        <span className="font-semibold">{isSubmitting ? 'Submitting...' : 'Running...'}</span>
-      </div>
-    );
-  }
-  if (testResults?.length > 0) {
-    const passed = testResults.filter(r => r.pass).length;
-    const all = testResults.length;
-    const ok = passed === all;
-    return (
-      <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs flex items-center justify-between ${ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-        <div className="flex items-center gap-2">
-          <span>{ok ? '✅' : '❌'}</span>
-          <span className="font-semibold">{ok ? (verdict || 'All Tests Passed') : (verdict || 'Tests Failed')}</span>
-        </div>
-        <span className="text-[11px] opacity-70">{passed}/{all} passed</span>
-      </div>
-    );
-  }
-  if (verdict) {
-    const ok = verdict === 'ACCEPTED';
-    return (
-      <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs flex items-center gap-2 ${ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-        <span>{ok ? '✅' : '❌'}</span>
-        <span className="font-semibold">{verdict}</span>
-      </div>
-    );
-  }
-  return null;
-}
-
 /* ─── Results Content ─── */
-function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict }) {
+function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict, isSubmitMode, initialTestCases }) {
   const [activeCase, setActiveCase] = useState(0);
 
-  const cases = (testResults || []).map((r, i) => ({
-    label: r.isHidden ? `Hidden ${i + 1}` : `Case ${i + 1}`,
-    pass: r.pass ?? (r.status === 'PASSED'),
-    input: r.input,
-    actualOutput: r.actualOutput,
-    expectedOutput: r.expectedOutput,
-    error: r.error,
-  }));
+  let cases = [];
+  if (testResults && testResults.length > 0) {
+    cases = testResults.map((r, i) => ({
+      label: r.isHidden ? `Hidden ${i + 1}` : `Case ${i + 1}`,
+      pass: r.pass ?? (r.status === 'PASSED'),
+      input: r.input,
+      actualOutput: r.actualOutput,
+      expectedOutput: r.expectedOutput,
+      error: r.error,
+      isInitial: false,
+    }));
+  } else if (!isSubmitMode && !verdict && !output?.consoleOutput && !isRunning && !isSubmitting && initialTestCases && initialTestCases.length > 0) {
+    cases = initialTestCases.map((tc, i) => ({
+      label: `Case ${i + 1}`,
+      pass: null,
+      input: tc.input,
+      expectedOutput: tc.output,
+      isInitial: true,
+    }));
+  }
 
   const current = cases[activeCase];
 
+  if (isRunning || isSubmitting) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-10 h-full">
+        <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
+        <p className="text-sm font-semibold text-gray-700">{isSubmitting ? 'Evaluating Submission...' : 'Running Code...'}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-      <StatusBanner
-        isRunning={isRunning}
-        isSubmitting={isSubmitting}
-        verdict={verdict}
-        testResults={cases}
-      />
+      {/* Status Banner */}
+      {!isRunning && !isSubmitting && testResults?.length > 0 && (
+        <div className={`mb-4 rounded-xl border px-4 py-3 flex items-center justify-between ${testResults.every(r => r.pass) ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+          <div className="flex items-center gap-2">
+            <span>{testResults.every(r => r.pass) ? '✅' : '❌'}</span>
+            <span className="font-semibold text-sm">{testResults.every(r => r.pass) ? (verdict || 'Accepted') : (verdict || 'Wrong Answer')}</span>
+          </div>
+          <span className="text-xs font-medium opacity-80">{testResults.filter(r => r.pass).length} / {testResults.length} passed</span>
+        </div>
+      )}
+      {!isRunning && !isSubmitting && !testResults?.length && verdict && (
+        <div className={`mb-4 rounded-xl border px-4 py-3 flex items-center gap-2 ${verdict === 'ACCEPTED' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+          <span>{verdict === 'ACCEPTED' ? '✅' : '❌'}</span>
+          <span className="font-semibold text-sm">{verdict}</span>
+        </div>
+      )}
 
-      {cases.length > 0 ? (
+      {!isSubmitMode && cases.length > 0 ? (
         <>
           {/* Case tabs */}
           <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -251,13 +245,7 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict 
                 </div>
               </div>
             )}
-            {current?.expectedOutput != null && (
-              <div>
-                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1.5">Expected</div>
-                <div className="bg-gray-100/60 rounded-lg p-3 font-mono text-sm text-gray-900 whitespace-pre-wrap">{current.expectedOutput}</div>
-              </div>
-            )}
-            {current?.error && (
+            {current?.error != null && (
               <div>
                 <div className="text-xs text-red-500 font-medium uppercase tracking-wider mb-1.5">Runtime Error</div>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 font-mono text-xs text-red-700 whitespace-pre-wrap">{current.error}</div>
@@ -270,7 +258,7 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict 
           <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1.5">Console Output</div>
           <div className="bg-gray-100/60 rounded-lg p-3 font-mono text-sm text-gray-900 whitespace-pre-wrap">{output.consoleOutput}</div>
         </div>
-      ) : !isRunning && !isSubmitting ? (
+      ) : !isRunning && !isSubmitting && !testResults?.length ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <Terminal className="w-8 h-8 text-gray-300 mb-3" />
           <p className="text-sm font-medium text-gray-500">Run your code to see results</p>
@@ -350,6 +338,8 @@ export default function CodeEditorPanel({
   output,
   testResults,
   verdict,
+  isSubmitMode,
+  initialTestCases,
   style,
 }) {
   const editorRef = useRef(null);
@@ -469,6 +459,8 @@ export default function CodeEditorPanel({
               output={output}
               testResults={testResults}
               verdict={verdict}
+              isSubmitMode={isSubmitMode}
+              initialTestCases={initialTestCases}
             />
           )}
         </div>

@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     try {
       await api.post('/auth/forgot-password', { email });
       setStep(2);
-    } catch (err) { setError(err.response?.data?.error || 'Failed to send reset code'); }
+    } catch (err) { setError(err.response?.data?.message || err.response?.data?.error || 'Failed to send reset code'); }
     finally { setLoading(false); }
   };
 
@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
     try {
       await api.post('/auth/reset-password', { email, code, newPassword: pass });
       setDone(true);
-    } catch (err) { setError(err.response?.data?.error || 'Failed to reset password'); }
+    } catch (err) { setError(err.response?.data?.message || err.response?.data?.error || 'Failed to reset password'); }
     finally { setLoading(false); }
   };
 

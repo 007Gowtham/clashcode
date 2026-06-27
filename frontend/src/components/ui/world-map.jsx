@@ -8,7 +8,7 @@ const mapCache = new Map();
 
 const generateMapSVG = (theme, dotsColor) => {
   const cacheKey = `${theme}-${dotsColor}`;
-  
+
   if (mapCache.has(cacheKey)) {
     return mapCache.get(cacheKey);
   }
@@ -16,7 +16,7 @@ const generateMapSVG = (theme, dotsColor) => {
   // Dynamically import only when needed
   const DottedMap = require("dotted-map").default;
   const map = new DottedMap({ height: 100, grid: "diagonal" });
-  
+
   const defaultColor = theme === "dark" ? "#FFFFFF80" : "#00000080";
   const finalDotsColor = dotsColor || defaultColor;
 
