@@ -14,6 +14,13 @@ spring:
           auth: true
           starttls:
             enable: true
+  cloud:
+    aws:
+      region:
+        static: ap-south-1
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID:}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
 server:
   port: ${SERVER_PORT:5000}
@@ -36,3 +43,5 @@ app:
     image-prefix: ${SANDBOX_IMAGE_PREFIX:clashcode}
     cpus: ${SANDBOX_CPUS:0.5}
     timeout-ms: ${SANDBOX_TIMEOUT_MS:5000}
+  sqs:
+    judge-queue: compiler-queue

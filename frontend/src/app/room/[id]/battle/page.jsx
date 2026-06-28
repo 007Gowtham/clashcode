@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/resizable';
 import ProblemPanel from '@/components/room/code-editor/ProblemPanel';
 import CodeEditorPanel from '@/components/room/code-editor/CodeEditorPanel';
+import { useSubmissionSocket } from '@/lib/hooks/useSubmissionSocket';
+import { useWebSocket } from '@/lib/hooks/useWebSocket';
 
 function Timer({ endTime, onEnd }) {
  const [left, setLeft] = useState('');
@@ -75,7 +77,38 @@ export default function BattlePage() {
  const [testResults, setTestResults] = useState([]);
  const [submissions, setSubmissions] = useState([]);
  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+ const [pendingSubmissionId, setPendingSubmissionId] = useState(null);
  const socketRef = useRef(null);
+
+ // ── Real-time submission verdict via STOMP WebSocket ─────────────────
+ const { verdict: wsVerdict, isJudging } = useSubmissionSocket(pendingSubmissionId);
+
+ // ── Real-time leaderboard via STOMP WebSocket ─────────────────────────
+ // Subscribed for the lifetime of the page — updates arrive automatically
+ // whenever a teammate's score changes (no more fetchLeaderboard() polling).
+ useWebSocket(
+  id ? `/topic/room/${id}/leaderboard` : null,
+  (data) => dispatch(setLeaderboard(Array.isArray(data) ? data : []))
+ );
+
+ // Apply the STOMP verdict when it arrives
+ useEffect(() => {
+  if (!wsVerdict || !pendingSubmissionId) return;
+  // Safety guard: only apply if the verdict is for THIS submission.
+  const verdictId = wsVerdict.submissionId?.toString();
+  if (verdictId && verdictId !== pendingSubmissionId.toString()) return;
+
+  const statusStr = wsVerdict.status || 'UNKNOWN';
+  setVerdict(statusStr);
+  setSubmitting(false);
+  setPendingSubmissionId(null); // unsubscribe after receiving verdict
+  if (statusStr === 'ACCEPTED') {
+   const problemId = myQuestions[activeQ]?.id || myQuestions[activeQ]?._id;
+   if (problemId) setAccepted(p => ({ ...p, [problemId]: true }));
+  }
+  // Refresh submissions list — leaderboard now updates via WebSocket push
+  fetchSubmissions();
+ }, [wsVerdict, pendingSubmissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
  const q = myQuestions[activeQ];
 
@@ -159,8 +192,15 @@ export default function BattlePage() {
  const fetchSubmissions = async () => {
  try {
  setSubmissionsLoading(true);
- const { data } = await api.get(`/submissions/room/${id}`);
- setSubmissions((data?.data || []).reverse());
+  const { data } = await api.get(`/submissions/room/${id}`);
+  // Filter out PENDING — only show finalized submissions.
+  // PENDING state is already shown by the "Evaluating..." spinner.
+  // Without this filter, submitting causes a flash of PENDING in the tab
+  // which is then replaced by the final verdict after the worker finishes.
+  const finalized = (data?.data || [])
+   .filter(s => s.status !== 'PENDING')
+   .reverse();
+  setSubmissions(finalized);
  } catch (err) {
  console.error('Failed to fetch submissions:', err);
  } finally {
@@ -222,34 +262,33 @@ export default function BattlePage() {
  const codeToSubmit = codeOverride ?? code;
  const problemId = myQuestions[activeQ].id || myQuestions[activeQ]._id;
  setSubmitting(true); setVerdict(''); setTestResults([]); setLastAction('SUBMIT');
+ setPendingSubmissionId(null); // reset any previous subscription
  try {
- const { data: res } = await api.post('/submissions/submit', {
- problemId,
- roomId: id,
- language: lang,
- code: codeToSubmit,
- });
- const subData = res?.data;
- const statusVerdict = subData?.status || 'UNKNOWN';
- const trResults = (subData?.testResults || []).map(r => ({
- pass: r.passed,
- input: r.input,
- actualOutput: r.got,
- expectedOutput: r.expected,
- }));
- setVerdict(statusVerdict);
- setTestResults(trResults);
- if (statusVerdict === 'ACCEPTED') {
- setAccepted(p => ({ ...p, [problemId]: true }));
- }
- fetchLeaderboard();
- fetchSubmissions();
+  const { data: res } = await api.post('/submissions/submit', {
+   problemId,
+   roomId: id,
+   language: lang,
+   code: codeToSubmit,
+  });
+  const subData = res?.data;
+  const submissionId = subData?.id || subData?._id;
+  if (submissionId) {
+   // Subscribe to real-time verdict via STOMP WebSocket
+   setPendingSubmissionId(submissionId);
+   // isJudging = true until the WebSocket verdict arrives
+  } else {
+   // Fallback: backend returned full verdict immediately (e.g. /run)
+   const statusVerdict = subData?.status || 'UNKNOWN';
+   setVerdict(statusVerdict);
+   setSubmitting(false);
+   fetchLeaderboard();
+   fetchSubmissions();
+  }
  } catch (err) {
- setVerdict('ERROR');
- setOutput(err.response?.data?.message || 'Submit failed');
- fetchSubmissions();
- } finally {
- setSubmitting(false);
+  setVerdict('ERROR');
+  setOutput(err.response?.data?.message || 'Submit failed');
+  setSubmitting(false);
+  fetchSubmissions();
  }
  };
 
