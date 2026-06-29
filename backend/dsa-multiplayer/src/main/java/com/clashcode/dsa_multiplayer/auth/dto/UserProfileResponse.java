@@ -18,4 +18,5 @@ public class UserProfileResponse {
     private boolean isVerified;
     private UUID activeRoomId;
     private UUID currentTeamId;
+    private String profilePictureKey;
 }

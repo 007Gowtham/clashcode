@@ -34,6 +34,7 @@ public class TeamService {
     private final TeamMemberRepository teamMemberRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final com.clashcode.dsa_multiplayer.common.service.WebSocketService webSocketService;
 
     @Transactional
     public TeamResponse createTeam(CreateTeamRequest request, User leader) {
@@ -76,6 +77,7 @@ public class TeamService {
         userRepository.save(currentLeader);
 
         log.info("Team created: {} with code {} inside room {}", team.getName(), team.getCode(), room.getCode());
+        webSocketService.push("/topic/room/" + room.getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
         return convertToTeamResponse(team);
     }
 
@@ -119,6 +121,7 @@ public class TeamService {
         team = teamRepository.save(team);
 
         log.info("User {} joined team {}", currentUser.getUsername(), team.getCode());
+        webSocketService.push("/topic/room/" + room.getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
         return convertToTeamResponse(team);
     }
 
@@ -143,6 +146,7 @@ public class TeamService {
         team = teamRepository.save(team);
 
         log.info("User {} toggled ready status to {} in team {}", user.getUsername(), member.isReady(), team.getCode());
+        webSocketService.push("/topic/room/" + team.getRoom().getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
         return convertToTeamResponse(team);
     }
 
@@ -180,6 +184,7 @@ public class TeamService {
         team = teamRepository.save(team);
 
         log.info("User {} kicked {} from team {}", leader.getUsername(), kickedUser != null ? kickedUser.getUsername() : userIdToKick, team.getCode());
+        webSocketService.push("/topic/room/" + team.getRoom().getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
         return convertToTeamResponse(team);
     }
 
@@ -221,6 +226,7 @@ public class TeamService {
             teamRepository.save(team);
             log.info("User {} left team {}", user.getUsername(), team.getCode());
         }
+        webSocketService.push("/topic/room/" + team.getRoom().getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
     }
 
     public List<TeamResponse> getTeamsInRoom(UUID roomId) {

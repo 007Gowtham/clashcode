@@ -46,11 +46,12 @@ public final class SubmissionJudgeEngine {
             String input = (String) tc.get("input");
             String expected = ((String) tc.get("expectedOutput")).trim();
 
+            long timeoutMs = calculateTimeoutMs(problem.getTimeLimitMs(), language);
             SandboxResult result = sandbox.run(SandboxRequest.builder()
                     .language(language)
                     .code(code)
                     .stdin(input)
-                    .timeoutMs(problem.getTimeLimitMs() + compileBuffer(language))
+                    .timeoutMs(timeoutMs)
                     .memoryLimit(problem.getMemoryLimitMb() + "m")
                     .build());
 
@@ -101,6 +102,7 @@ public final class SubmissionJudgeEngine {
             Map<String, Object> tcResult = new LinkedHashMap<>();
             tcResult.put("passed", casePassed);
             tcResult.put("timeMs", result.getExecutionTimeMs());
+            tcResult.put("isHidden", isHidden);
             if (!isHidden) {
                 tcResult.put("input", input);
                 tcResult.put("expected", expected);
@@ -121,13 +123,27 @@ public final class SubmissionJudgeEngine {
         return new JudgeResult(verdict, passed, maxTime, resultMap);
     }
 
-    private static long compileBuffer(String language) {
-        if (language == null)
-            return 0L;
-        return switch (language.toLowerCase()) {
-            case "java" -> 8000L;
-            case "cpp" -> 5000L;
+    private static long calculateTimeoutMs(int baseTimeLimitMs, String language) {
+        if (language == null) return baseTimeLimitMs;
+
+        // Language-specific multiplier (slower languages get more time)
+        double multiplier = switch (language.toLowerCase()) {
+            case "python" -> 3.5;
+            case "javascript" -> 2.5;
+            case "java" -> 2.0;
+            case "cpp" -> 1.5;
+            default -> 1.0;
+        };
+
+        long adjustedLimit = Math.round(baseTimeLimitMs * multiplier);
+
+        // Compile time buffer for compiled languages
+        long buffer = switch (language.toLowerCase()) {
+            case "java" -> 12000L; // 12s compile buffer
+            case "cpp" -> 10000L;  // 10s compile buffer
             default -> 0L;
         };
+
+        return adjustedLimit + buffer;
     }
 }

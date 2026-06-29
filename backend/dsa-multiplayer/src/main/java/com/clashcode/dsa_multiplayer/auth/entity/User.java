@@ -54,4 +54,7 @@ public class User {
 
     @Column(name = "current_team_id")
     private UUID currentTeamId;
+
+    @Column(name = "profile_picture_url")
+    private String profilePictureKey;
 }

@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import api from '@/lib/axios';
 import { setRoom, setTeams, setMyTeam, setMyRole, upsertTeam, removeTeam } from '@/store/slices/roomSlice';
 import { setEndTime, setMyQuestions, setLeaderboard } from '@/store/slices/contestSlice';
+import { updateUser } from '@/store/slices/authSlice';
 import { cn } from '@/lib/utils';
 import {
  Users, Zap, Trophy, Clock, CheckCircle2, Shield,
@@ -20,6 +21,7 @@ import TeamGrid from '@/components/room/waiting/TeamGrid';
 import CreateTeamModal from '@/components/room/modals/CreateTeamModal';
 import JoinTeamModal from '@/components/room/modals/JoinTeamModal';
 import JoinViaCodeModal from '@/components/room/modals/JoinViaCodeModal';
+import { useWebSocket } from '@/lib/hooks/useWebSocket';
 
 export default function WaitingPage() {
  const { id } = useParams();
@@ -39,19 +41,43 @@ export default function WaitingPage() {
  const [starting, setStarting] = useState(false);
  const [joining, setJoining] = useState(false);
 
- useEffect(() => {
- if (!id || id === 'undefined') {
- router.push('/rooms');
- return;
- }
- fetchRoom();
- 
- // Auto-poll room status every 5 seconds to simulate real-time matchmaking updates
- const interval = setInterval(() => {
- fetchRoom();
- }, 5000);
- return () => clearInterval(interval);
- }, [id, user, dispatch, router]);
+  // Subscribe to real-time room events (start/join/leave/ready toggle)
+  useWebSocket(
+    id ? `/topic/room/${id}/events` : null,
+    (event) => {
+      if (event && event.type === 'ROOM_STARTED') {
+        if (event.endTime) {
+          dispatch(setEndTime(event.endTime));
+        }
+        router.push(`/room/${id}/battle`);
+      } else {
+        fetchRoom();
+      }
+    }
+  );
+
+  const userId = user?._id || user?.id;
+
+  useEffect(() => {
+    if (!id || id === 'undefined') {
+      router.push('/rooms');
+      return;
+    }
+    fetchRoom();
+    // Refresh user profile picture state from backend
+    api.get('/auth/me')
+      .then(res => {
+        const profile = res.data?.data;
+        if (profile) dispatch(updateUser(profile));
+      })
+      .catch(() => {});
+    
+    // Auto-poll room status every 5 seconds to simulate real-time matchmaking updates
+    const interval = setInterval(() => {
+      fetchRoom();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [id, userId, dispatch, router]);
 
  const fetchRoom = async () => {
  try {
@@ -237,128 +263,154 @@ export default function WaitingPage() {
  if (loading) return null;
 
  return (
- <div className="bg-white text-slate-900 min-h-screen flex flex-col relative antialiased font-sans overflow-hidden">
+  <div className="bg-[#f5f7f9] dark:bg-[#111111] text-slate-900 dark:text-[#eff1f6] min-h-screen flex flex-col relative antialiased overflow-hidden transition-colors duration-300" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
 
- <WorldMapBackground />
+ <header className="relative z-50 w-full px-8 py-5 flex items-center justify-between">
+  
+  {/* Left: Logo + Room Info */}
+  <div className="flex items-center gap-3">
+  <div className="w-9 h-9 bg-slate-900 dark:bg-[#262626] border border-transparent dark:border-[#333333] rounded-xl flex items-center justify-center text-white font-semibold text-lg shadow-lg dark:shadow-none select-none">Λ</div>
+  <div className="flex flex-col gap-0.5">
+  <span className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight leading-none">{room?.name || 'Loading...'}</span>
+  {isAdmin && (
+  <span className="text-[11px] font-medium text-slate-400 dark:text-[#8c8c8c] leading-none  ">
+  {room?.code}
+  </span>
+  )}
+  </div>
+  </div>
 
+  {/* Right: Actions */}
+  <div className="flex items-center gap-2">
 
-<header className="relative z-50 w-full px-8 py-5 flex items-center justify-between">
+  <button
+  onClick={() => {
+  setLoading(true);
+  fetchRoom();
+  }}
+  className="flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#262626] hover:bg-slate-50 dark:hover:bg-[#333333] text-slate-700 dark:text-white font-medium transition-all active:scale-95"
+  title="Refresh Lobby"
+  >
+  <Activity className={cn("w-4 h-4 text-slate-500 dark:text-[#8c8c8c]", loading && "animate-spin")} />
+  </button>
+
+  {isAdmin && (
+  <button
+  onClick={startContest}
+  disabled={starting || !allReady}
+  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 dark:bg-[#ffa116] text-white dark:text-black text-sm font-semibold hover:bg-slate-800 dark:hover:bg-[#e08e12] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+  >
+  <Zap size={14} fill={allReady ? "currentColor" : "none"} />
+  {starting ? 'Starting...' : 'Start Battle'}
+  </button>
+  )}
+
+  <button
+  onClick={leaveRoom}
+  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 dark:bg-[#3a1d1d] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 text-sm font-semibold hover:bg-red-100 dark:hover:bg-[#4a2424] transition-all active:scale-95"
+  >
+  <LogOut size={14} />
+  {isAdmin ? 'Terminate' : 'Leave'}
+  </button>
+
+  </div>
+ </header>
+   <main className="relative z-10 w-full max-w-6xl mx-auto px-6 pt-10 pb-32 flex flex-col">
+   <PageTransition>
+   {error && <div className="mb-8 bg-red-50 dark:bg-[#3a1d1d] border border-red-100 dark:border-red-900/40 text-red-500 dark:text-red-400 rounded-2xl px-6 py-4 text-xs font-semibold shadow-sm">{error}</div>}
+  
+    {/* Contest Warmup Banner Card */}
+    <div className="w-full max-w-6xl mx-auto mb-10 bg-white dark:bg-[#1e1e1e] border border-[#e5e8eb] dark:border-[#2d2d2d] rounded-2xl p-8 shadow-[0_2px_8px_rgba(0,0,0,0.01)] transition-colors duration-300">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6 pb-6 border-b border-slate-100 dark:border-[#2d2d2d]">
+        <div className="space-y-1">
+          <div className="text-[10px] font-bold tracking-[0.2em] text-[#ffa116] uppercase font-mono">LOBBY // PREPARATION</div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">CLASH CODE</h1>
+        </div>
+        <div className="flex items-center gap-2 bg-[#f5f7f9] dark:bg-[#262626] px-4 py-2 rounded-xl border border-slate-200/60 dark:border-[#333333] text-xs font-mono font-medium text-slate-600 dark:text-[#eff1f6]">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>SYNCED BRACKET</span>
+        </div>
+      </div>
+
+      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+        Welcome to the battle lobby. Before the contest begins, verify that all teammates are in the room and have toggled their status to <span className="font-semibold text-[#ffa116]">Ready</span>.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-medium text-[#8c8c8c] dark:text-slate-400">
+        <div className="flex items-center gap-3 bg-[#fafafa] dark:bg-[#262626] p-4 rounded-xl border border-slate-100 dark:border-[#2d2d2d]">
+          <Zap className="w-4 h-4 text-[#ffa116] shrink-0" />
+          <span>Redirections to the battle arena happen instantly when the host starts.</span>
+        </div>
+        <div className="flex items-center gap-3 bg-[#fafafa] dark:bg-[#262626] p-4 rounded-xl border border-slate-100 dark:border-[#2d2d2d]">
+          <Users className="w-4 h-4 text-[#ffa116] shrink-0" />
+          <span>Ensure your selected language and key configurations are ready.</span>
+        </div>
+      </div>
+    </div>
+
+   <div className="w-full flex items-center justify-center flex-col">
+   <div className="w-full space-y-12">
+  {/* Status Section */}
+  <div className="w-full max-w-6xl mx-auto mb-8">
+  <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-3 mb-2 tracking-tight ">
+  <span className="relative flex h-3 w-3">
+  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+  </span>
+  Battle Lobby Status
+  </h2>
+  <p className="text-slate-500 dark:text-slate-400 text-sm ml-6 ">Real-time statistics from the waiting room</p>
+  </div>
  
- {/* Left: Logo + Room Info */}
- <div className="flex items-center gap-3">
- <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center text-white font-semibold text-lg shadow-lg shadow-slate-900/10 select-none">Λ</div>
- <div className="flex flex-col gap-0.5">
- <span className="text-sm font-semibold text-slate-900 tracking-tight leading-none">{room?.name || 'Loading...'}</span>
- {isAdmin && (
- <span className="text-[11px] font-medium text-slate-400 leading-none  ">
- {room?.code}
- </span>
- )}
- </div>
- </div>
-
- {/* Right: Actions */}
- <div className="flex items-center gap-2">
-
- <button
- onClick={() => {
- setLoading(true);
- fetchRoom();
- }}
- className="flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition-all active:scale-95"
- title="Refresh Lobby"
- >
- <Activity className={cn("w-4 h-4 text-slate-500", loading && "animate-spin")} />
- </button>
-
- {isAdmin && (
- <button
- onClick={startContest}
- disabled={starting || !allReady}
- className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
- >
- <Zap size={14} fill={allReady ? "currentColor" : "none"} />
- {starting ? 'Starting...' : 'Start Battle'}
- </button>
- )}
-
- <button
- onClick={leaveRoom}
- className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-semibold hover:bg-red-100 transition-all active:scale-95"
- >
- <LogOut size={14} />
- {isAdmin ? 'Terminate' : 'Leave'}
- </button>
-
- </div>
-</header>
- <main className="relative z-10 w-full max-w-6xl mx-auto px-6 pb-32 flex flex-col" style={{ marginTop: '580px' }}>
- <PageTransition>
- {error && <div className="mb-8 bg-red-50 border border-red-100 text-red-500 rounded-2xl px-6 py-4 text-xs font-semibold   shadow-sm">{error}</div>}
-
- <div className="w-full flex items-center justify-center flex-col">
- <div className="w-full space-y-12">
- {/* Status Section */}
- <div className="w-full max-w-6xl mx-auto mb-8">
- <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-3 mb-2 tracking-tight ">
- <span className="relative flex h-3 w-3">
- <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
- <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
- </span>
- Battle Lobby Status
- </h2>
- <p className="text-slate-500 text-sm ml-6 ">Real-time statistics from the waiting room</p>
- </div>
-
- <div className="mb-6">
- <StatsOverview stats={stats} />
- </div>
-
- {/* Team Actions Section */}
- <div className="w-full max-w-6xl mx-auto mb-8 mt-12 bg-white rounded-[2.5rem] p-8 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] border border-slate-100">
- <div className="mb-6">
- <h2 className="text-2xl font-semibold text-slate-900 mb-2 tracking-tight">
- Assemble Your Squad
- </h2>
- <p className="text-slate-500 ">
- Create your own team or join forces with existing warriors
- </p>
- </div>
-
- <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
- {/* Search */}
- <div className="relative group/search w-full sm:flex-1">
- <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within/search:text-slate-700 transition-colors" />
- <input
- type="text"
- placeholder="Search teams..."
- value={searchTerm}
- onChange={(e) => setSearchTerm(e.target.value)}
- className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-slate-300 focus:ring-1 focus:ring-slate-200 transition-all "
- />
- </div>
-
- {/* Action Buttons */}
- <div className="flex gap-2 w-full sm:w-auto shrink-0">
- <button
- onClick={() => setIsJoinViaCodeModalOpen(true)}
- disabled={!!myTeam}
- className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed "
- >
- <Terminal className="w-4 h-4 text-slate-400" />
- <span>Join via Code</span>
- </button>
- <button
- onClick={() => setIsCreateTeamModalOpen(true)}
- disabled={!!myTeam}
- className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] "
- >
- <Plus className="w-4 h-4" />
- <span>Create Team</span>
- </button>
- </div>
- </div>
- </div>
+  <div className="mb-6">
+  <StatsOverview stats={stats} />
+  </div>
+ 
+  {/* Team Actions Section */}
+  <div className="w-full max-w-6xl mx-auto mb-8 mt-12 bg-white dark:bg-[#1e1e1e] rounded-[2.5rem] p-8 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] dark:shadow-none border border-slate-100 dark:border-[#2d2d2d] transition-colors duration-300">
+  <div className="mb-6">
+  <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2 tracking-tight">
+  Assemble Your Squad
+  </h2>
+  <p className="text-slate-500 dark:text-slate-400">
+  Create your own team or join forces with existing warriors
+  </p>
+  </div>
+ 
+  <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+  {/* Search */}
+  <div className="relative group/search w-full sm:flex-1">
+  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within/search:text-slate-700 dark:group-focus-within/search:text-white transition-colors" />
+  <input
+  type="text"
+  placeholder="Search teams..."
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#262626] border border-slate-200 dark:border-[#333333] rounded-xl text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#8c8c8c] text-sm focus:outline-none focus:border-slate-300 dark:focus:border-[#ffa116] focus:ring-1 focus:ring-slate-200 dark:focus:ring-[#ffa116] transition-all "
+  />
+  </div>
+ 
+  {/* Action Buttons */}
+  <div className="flex gap-2 w-full sm:w-auto shrink-0">
+  <button
+  onClick={() => setIsJoinViaCodeModalOpen(true)}
+  disabled={!!myTeam}
+  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#262626] hover:bg-slate-50 dark:hover:bg-[#333333] text-slate-700 dark:text-white text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed "
+  >
+  <Terminal className="w-4 h-4 text-slate-400" />
+  <span>Join via Code</span>
+  </button>
+  <button
+  onClick={() => setIsCreateTeamModalOpen(true)}
+  disabled={!!myTeam}
+  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-[#ffa116] text-white dark:text-black text-sm font-medium hover:bg-slate-800 dark:hover:bg-[#e08e12] transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] "
+  >
+  <Plus className="w-4 h-4" />
+  <span>Create Team</span>
+  </button>
+  </div>
+  </div>
+  </div>
 
  {/* Squad Rosters via TeamGrid */}
  <TeamGrid teams={teams.filter(t => t.name?.toLowerCase().includes(searchTerm.toLowerCase()) || t.code?.toLowerCase().includes(searchTerm.toLowerCase())).map(team => ({

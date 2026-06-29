@@ -1,8 +1,10 @@
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:clashcode}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:password}
+    # ── Neon PostgreSQL ───────────────────────────────────────────────────────
+    # TODO: move credentials to OS env vars (DB_USERNAME / DB_PASSWORD) once confirmed working
+    url: jdbc:postgresql://ep-mute-poetry-ao66bnri.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+    username: ${DB_USERNAME:neondb_owner}       # set DB_USERNAME in OS env to avoid hardcode
+    password: ${DB_PASSWORD:npg_ANsfC6kjbdw2}   # set DB_PASSWORD in OS env to avoid hardcode
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect

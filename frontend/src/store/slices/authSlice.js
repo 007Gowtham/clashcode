@@ -28,6 +28,20 @@ const authSlice = createSlice({
       state.token = token;
       if (token) localStorage.setItem('token', token);
     },
+    // Called after a successful S3 upload + /confirm flow
+    setProfilePicture(state, { payload: key }) {
+      if (state.user) {
+        state.user = { ...state.user, profilePictureKey: key };
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
+    },
+    // Merges latest user profile updates
+    updateUser(state, { payload: user }) {
+      if (state.user) {
+        state.user = { ...state.user, ...user };
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
+    },
     clearCredentials(state) {
       state.token           = null;
       state.refreshToken    = null;
@@ -40,5 +54,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, setAccessToken, clearCredentials } = authSlice.actions;
+export const { setCredentials, setAccessToken, setProfilePicture, updateUser, clearCredentials } = authSlice.actions;
 export default authSlice.reducer;

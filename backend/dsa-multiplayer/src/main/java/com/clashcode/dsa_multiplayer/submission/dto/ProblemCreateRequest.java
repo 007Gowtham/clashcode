@@ -47,6 +47,7 @@ public class ProblemCreateRequest {
         @NotBlank(message = "Test case expected output is required")
         private String expectedOutput;
 
+        @com.fasterxml.jackson.annotation.JsonProperty("isHidden")
         private boolean isHidden = false;
     }
 }

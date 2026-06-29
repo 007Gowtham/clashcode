@@ -34,6 +34,7 @@ public class SubmissionResponse {
         private String got;
         private boolean passed;
         private Long timeMs;
+        private boolean isHidden;
     }
 
     @SuppressWarnings("unchecked")
@@ -58,6 +59,7 @@ public class SubmissionResponse {
                                 .got((String) m.get("got"))
                                 .passed(Boolean.TRUE.equals(m.get("passed")))
                                 .timeMs(m.get("timeMs") instanceof Number n ? n.longValue() : null)
+                                .isHidden(Boolean.TRUE.equals(m.get("isHidden")))
                                 .build())
                         .toList();
             }

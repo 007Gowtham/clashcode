@@ -10,7 +10,7 @@ export default function RoomHeader({
  <div className="text-center mb-16 space-y-4">
  <h1
  className={cn(
- "text-6xl md:text-7xl font-bold text-slate-900 tracking-tight",
+ "text-6xl md:text-7xl font-bold text-slate-900 dark:text-white tracking-tight",
  titleClassName
  )}
  >
@@ -18,7 +18,7 @@ export default function RoomHeader({
  </h1>
  <p
  className={cn(
- "text-lg md:text-xl text-slate-500 font-normal max-w-2xl mx-auto",
+ "text-lg md:text-xl text-slate-500 dark:text-slate-400 font-normal max-w-2xl mx-auto",
  descriptionClassName
  )}
  >

@@ -38,9 +38,9 @@ export default function StatsOverview({ stats }) {
     return (
         <div className="w-full max-w-6xl mx-auto mb-12">
             {/* Main Card Container */}
-            <div className="bg-white rounded-[2rem] border border-slate-200/90 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.05)]">
+            <div className="bg-white dark:bg-[#1e1e1e] rounded-[2rem] border border-slate-200/90 dark:border-[#2d2d2d] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.05)] dark:shadow-none transition-colors duration-300">
                 {/* Grid Layout */}
-                <div className={`grid grid-cols-1 ${stats.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-4'} divide-y md:divide-y-0 md:divide-x divide-slate-200/90 items-stretch`}>
+                <div className={`grid grid-cols-1 ${stats.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-4'} divide-y md:divide-y-0 md:divide-x divide-slate-200/90 dark:divide-[#2d2d2d] items-stretch`}>
 
                     {stats.map((stat, index) => {
                         const isActiveTeams = stat.label === 'Active Teams';
@@ -67,12 +67,12 @@ export default function StatsOverview({ stats }) {
                                         />
                                     </div>
                                 ) : (
-                                    <div className="w-20 h-20 mb-8 bg-white rounded-[1.25rem] shadow-[0_2px_12px_-2px_rgba(0,0,0,0.08)] border border-slate-100 flex items-center justify-center transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.4)]">
-                                        <stat.icon strokeWidth={1.5} className="w-9 h-9 text-slate-800" />
+                                    <div className="w-20 h-20 mb-8 bg-white dark:bg-[#2c2c2c] rounded-[1.25rem] shadow-[0_2px_12px_-2px_rgba(0,0,0,0.08)] border border-slate-100 dark:border-[#3d3d3d] flex items-center justify-center transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_0_18px_rgba(16,185,129,0.4)]">
+                                        <stat.icon strokeWidth={1.5} className="w-9 h-9 text-slate-800 dark:text-white" />
                                     </div>
                                 )}
 
-                                <h3 className="text-4xl font-semibold text-slate-900 tracking-tight mb-1">
+                                <h3 className="text-4xl font-semibold text-slate-900 dark:text-white tracking-tight mb-1">
                                     <AnimatedNumber value={stat.value} />
                                 </h3>
 
@@ -84,10 +84,10 @@ export default function StatsOverview({ stats }) {
 
                                 {isReady && (
                                     <div className="w-full max-w-[160px] mb-1">
-                                        <p className="text-xs text-slate-500 font-medium">
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                                             {readyCount} / {totalPlayers || 0} Ready
                                         </p>
-                                        <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                        <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 dark:bg-[#2c2c2c] overflow-hidden">
                                             <div
                                                 className="h-full rounded-full bg-emerald-500 transition-[width] duration-500 ease-out"
                                                 style={{ width: `${readyPercent}%` }}
@@ -96,7 +96,7 @@ export default function StatsOverview({ stats }) {
                                     </div>
                                 )}
 
-                                <p className="text-lg text-slate-500 font-medium mt-1">{stat.label}</p>
+                                <p className="text-lg text-slate-500 dark:text-slate-400 font-medium mt-1">{stat.label}</p>
                             </div>
                         );
                     })}

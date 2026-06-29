@@ -14,9 +14,9 @@ const Modal = ({
  if (!isOpen) return null;
 
  return (
- <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/10 backdrop-blur-sm p-4">
+ <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/20 dark:bg-black/50 backdrop-blur-sm p-4">
  {/* Background blur effect */}
- <div className="absolute inset-0 z-0 flex blur-[4px] scale-[1.01] pointer-events-none opacity-40 grayscale-[20%]">
+ <div className="absolute inset-0 z-0 flex blur-[4px] scale-[1.01] pointer-events-none opacity-40 dark:opacity-5 grayscale-[20%]">
  <div className="w-16 border-r border-gray-200 bg-white flex flex-col items-center py-5">
  <div className="w-9 h-9 bg-emerald-500 rounded-xl mb-8"></div>
  <div className="flex flex-col gap-6 w-full px-3">
@@ -39,15 +39,15 @@ const Modal = ({
 
  {/* Modal Card */}
  <div
- className={`bg-white rounded-2xl shadow-2xl shadow-gray-200/50 w-full ${maxWidth} flex flex-col max-h-[90vh] border border-gray-200 animate-in fade-in zoom-in-95 duration-200 relative z-10 ${className}`}
+ className={`bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl shadow-gray-200/50 dark:shadow-none w-full ${maxWidth} flex flex-col max-h-[90vh] border border-gray-200 dark:border-[#2d2d2d] animate-in fade-in zoom-in-95 duration-200 relative z-10 ${className}`}
  >
  {/* Modal Header */}
  {title && (
- <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
- <h2 className="text-lg font-bold tracking-tight text-slate-900 ">{title}</h2>
+ <div className="px-6 py-4 border-b border-gray-100 dark:border-[#2d2d2d] flex items-center justify-between flex-shrink-0">
+ <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">{title}</h2>
  <button
  onClick={onClose}
- className="text-gray-400 hover:text-black hover:bg-black/5 p-2 rounded-lg transition-colors"
+ className="text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 p-2 rounded-lg transition-colors"
  >
  <X size={24} className="w-5 h-5" />
  </button>
@@ -59,7 +59,7 @@ const Modal = ({
 
  {/* Modal Footer */}
  {footer && (
- <div className="px-6 py-5 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl flex items-center justify-between flex-shrink-0">
+ <div className="px-6 py-5 border-t border-gray-100 dark:border-[#2d2d2d] bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-b-2xl flex items-center justify-between flex-shrink-0">
  {footer}
  </div>
  )}

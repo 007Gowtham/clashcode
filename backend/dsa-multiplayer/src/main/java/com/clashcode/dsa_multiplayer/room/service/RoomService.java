@@ -42,6 +42,7 @@ public class RoomService {
     private final ProblemRepository problemRepository;
     private final RoomProblemRepository roomProblemRepository;
     private final com.clashcode.dsa_multiplayer.submission.repository.SubmissionRepository submissionRepository;
+    private final com.clashcode.dsa_multiplayer.common.service.WebSocketService webSocketService;
 
     @Transactional
     public RoomResponse createRoom(CreateRoomRequest request, User admin) {
@@ -188,6 +189,13 @@ public class RoomService {
         room.setEndTime(Instant.now().plusSeconds(room.getTimeLimitMinutes() * 60L));
         room = roomRepository.save(room);
 
+        // Broadcast start event to all clients in the room
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "ROOM_STARTED");
+        event.put("roomId", roomId.toString());
+        event.put("endTime", room.getEndTime().toString());
+        webSocketService.push("/topic/room/" + roomId + "/events", event);
+
         log.info("Contest started for room {} with {} problems assigned",
                 room.getCode(), room.getQuestionsPerUser());
         return convertToRoomResponse(room);
@@ -300,6 +308,11 @@ public class RoomService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getRoomLeaderboard(UUID roomId) {
         List<Team> teams = teamRepository.findByRoomId(roomId);
+        List<com.clashcode.dsa_multiplayer.submission.entity.Submission> acceptedSubmissions = 
+            submissionRepository.findByRoomIdOrderBySubmittedAtDesc(roomId).stream()
+                .filter(s -> s.getStatus() == com.clashcode.dsa_multiplayer.submission.entity.SubmissionStatus.ACCEPTED)
+                .collect(Collectors.toList());
+
         return teams.stream()
                 .sorted(Comparator.comparingInt(Team::getScore).reversed())
                 .map(t -> {
@@ -307,9 +320,43 @@ public class RoomService {
                     entry.put("teamId", t.getId());
                     entry.put("teamName", t.getName());
                     entry.put("score", t.getScore());
+                    
+                    List<com.clashcode.dsa_multiplayer.team.entity.TeamMember> teamMembers = teamMemberRepository.findByTeamId(t.getId());
+                    List<Map<String, Object>> memberScores = teamMembers.stream()
+                        .map(tm -> {
+                            User u = tm.getUser();
+                            Set<UUID> solvedProblems = new HashSet<>();
+                            int userScore = 0;
+                            for (com.clashcode.dsa_multiplayer.submission.entity.Submission s : acceptedSubmissions) {
+                                if (s.getUser().getId().equals(u.getId())) {
+                                    if (solvedProblems.add(s.getProblem().getId())) {
+                                        userScore += pointsForDifficulty(s.getProblem().getDifficulty());
+                                    }
+                                }
+                            }
+                            
+                            Map<String, Object> mEntry = new LinkedHashMap<>();
+                            mEntry.put("userId", u.getId());
+                            mEntry.put("username", u.getUsername());
+                            mEntry.put("score", userScore);
+                            return mEntry;
+                        })
+                        .collect(Collectors.toList());
+                    
+                    entry.put("members", memberScores);
+                    entry.put("memberCount", teamMembers.size());
                     return entry;
                 })
                 .collect(Collectors.toList());
+    }
+
+    private int pointsForDifficulty(String difficulty) {
+        return switch (difficulty != null ? difficulty.toUpperCase() : "") {
+            case "EASY"   -> 10;
+            case "MEDIUM" -> 30;
+            case "HARD"   -> 50;
+            default       -> 0;
+        };
     }
 
     public RoomResponse convertToRoomResponse(Room room) {
