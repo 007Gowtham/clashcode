@@ -53,9 +53,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
-const WS_URL =
-  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_WS_URL) ||
-  'http://localhost:5000';
+const WS_URL = 'http://13.201.230.50:5000';
 
 /**
  * @param {string|null} topic      STOMP destination; pass null to stay disconnected
