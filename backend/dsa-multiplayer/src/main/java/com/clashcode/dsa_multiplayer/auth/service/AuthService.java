@@ -175,6 +175,23 @@ public class AuthService {
         log.info("User {} logged out, all refresh tokens revoked", user.getUsername());
     }
 
+<<<<<<< HEAD
+=======
+    // ── Change Password (authenticated) ───────────────────────────────────────
+
+    @Transactional
+    public void changePassword(User user, ChangePasswordRequest request) {
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            throw new ApiException("WRONG_PASSWORD: Current password is incorrect", HttpStatus.BAD_REQUEST);
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        // Revoke all refresh tokens to force re-login on other devices
+        refreshTokenRepository.revokeAllByUserId(user.getId());
+        log.info("Password changed for user {}", user.getUsername());
+    }
+
+>>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
     // ── Forgot Password ───────────────────────────────────────────────────────
 
     @Transactional
@@ -306,6 +323,10 @@ public class AuthService {
                 .isVerified(user.isVerified())
                 .activeRoomId(user.getActiveRoomId())
                 .currentTeamId(user.getCurrentTeamId())
+<<<<<<< HEAD
+=======
+                .profilePictureKey(user.getProfilePictureKey())
+>>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
                 .build();
     }
 

@@ -30,7 +30,11 @@ public class ProblemService {
 
     @Transactional
     public ProblemResponse create(ProblemCreateRequest req, User admin) {
+<<<<<<< HEAD
         requireAdmin(admin);
+=======
+      
+>>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
 
         Problem problem = Problem.builder()
                 .title(req.getTitle())
@@ -53,7 +57,10 @@ public class ProblemService {
 
     @Transactional
     public ProblemResponse update(UUID id, ProblemUpdateRequest req, User admin) {
+<<<<<<< HEAD
         requireAdmin(admin);
+=======
+>>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
         Problem problem = getOrThrow(id);
 
         if (req.getTitle()        != null) problem.setTitle(req.getTitle());
@@ -72,7 +79,10 @@ public class ProblemService {
 
     @Transactional
     public void delete(UUID id, User admin) {
+<<<<<<< HEAD
         requireAdmin(admin);
+=======
+>>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
         if (!problemRepo.existsById(id)) {
             throw new ApiException("PROBLEM_NOT_FOUND: Problem not found", HttpStatus.NOT_FOUND);
         }

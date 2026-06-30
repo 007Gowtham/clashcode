@@ -144,4 +144,21 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserProfileResponse>> me(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(ApiResponse.ok("User profile", authService.getProfile(user)));
     }
+<<<<<<< HEAD
+=======
+
+    /** POST /auth/change-password — requires valid JWT; verifies old password before updating */
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(user, request);
+        return ResponseEntity.ok(
+            ApiResponse.<Void>builder()
+                .status(200).success(true)
+                .message("Password changed successfully — you will need to log in again on other devices")
+                .build()
+        );
+    }
+>>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
 }

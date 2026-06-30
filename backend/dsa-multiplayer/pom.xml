@@ -93,7 +93,15 @@
 			<groupId>io.awspring.cloud</groupId>
 			<artifactId>spring-cloud-aws-starter-sqs</artifactId>
 		</dependency>
+<<<<<<< HEAD
 
+=======
+     
+		<dependency>
+			<groupId>io.awspring.cloud</groupId>
+			<artifactId>spring-cloud-aws-starter-s3</artifactId>
+		</dependency>
+>>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
 
 		<!-- Database -->
 		<dependency>

@@ -11,7 +11,7 @@ export const initSocket = (accessToken) => {
   if (typeof window === 'undefined') return null;
   if (socket?.connected) return socket;
 
-  socket = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5000', {
+  socket = io('http://13.201.230.50:5000', {
     auth: { token: accessToken },
     transports: ['websocket', 'polling'],
     withCredentials: true,

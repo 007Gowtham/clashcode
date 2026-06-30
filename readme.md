@@ -101,7 +101,7 @@ clashcode/
 │   │   │   ├── layout.jsx   # Root layout
 │   │   │   ├── page.jsx     # Home page
 │   │   │   ├── login/       # Authentication
-│   │   │   ├── register/
+│   │   │   ├── regidn vdn v vnmv mvfster/
 │   │   │   ├── forgot-password/
 │   │   │   ├── rooms/       # Room listing
 │   │   │   └── room/[id]/   # Room-specific pages
