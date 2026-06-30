@@ -3,7 +3,7 @@ name: Deploy Backend to EC2
 on:
   push:
     branches:
-      - appmod/java-upgrade-20260626101034
+      - "**"
     paths:
       - 'backend/dsa-multiplayer/**'
 
