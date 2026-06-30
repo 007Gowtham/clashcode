@@ -27,8 +27,6 @@ const authSlice = createSlice({
     setAccessToken(state, { payload: token }) {
       state.token = token;
       if (token) localStorage.setItem('token', token);
-<<<<<<< HEAD
-=======
     },
     // Called after a successful S3 upload + /confirm flow
     setProfilePicture(state, { payload: key }) {
@@ -43,7 +41,6 @@ const authSlice = createSlice({
         state.user = { ...state.user, ...user };
         localStorage.setItem('user', JSON.stringify(state.user));
       }
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
     },
     clearCredentials(state) {
       state.token           = null;
@@ -57,9 +54,5 @@ const authSlice = createSlice({
   },
 });
 
-<<<<<<< HEAD
-export const { setCredentials, setAccessToken, clearCredentials } = authSlice.actions;
-=======
 export const { setCredentials, setAccessToken, setProfilePicture, updateUser, clearCredentials } = authSlice.actions;
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
 export default authSlice.reducer;

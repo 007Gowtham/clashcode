@@ -161,17 +161,6 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict,
 
   let cases = [];
   if (testResults && testResults.length > 0) {
-<<<<<<< HEAD
-    cases = testResults.map((r, i) => ({
-      label: r.isHidden ? `Hidden ${i + 1}` : `Case ${i + 1}`,
-      pass: r.pass ?? (r.status === 'PASSED'),
-      input: r.input,
-      actualOutput: r.actualOutput,
-      expectedOutput: r.expectedOutput,
-      error: r.error,
-      isInitial: false,
-    }));
-=======
     cases = testResults
       .filter(r => !r.isHidden)
       .map((r, i) => ({
@@ -183,7 +172,6 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict,
         error: r.error,
         isInitial: false,
       }));
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
   } else if (!isSubmitMode && !verdict && !output?.consoleOutput && !isRunning && !isSubmitting && initialTestCases && initialTestCases.length > 0) {
     cases = initialTestCases.map((tc, i) => ({
       label: `Case ${i + 1}`,
@@ -200,11 +188,7 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict,
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-10 h-full">
         <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
-<<<<<<< HEAD
-        <p className="text-sm font-semibold text-gray-700">{isSubmitting ? 'Evaluating Submission...' : 'Running Code...'}</p>
-=======
         <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">{isSubmitting ? 'Evaluating Submission...' : 'Running Code...'}</p>
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
       </div>
     );
   }
@@ -213,11 +197,7 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict,
     <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
       {/* Status Banner */}
       {!isRunning && !isSubmitting && testResults?.length > 0 && (
-<<<<<<< HEAD
-        <div className={`mb-4 rounded-xl border px-4 py-3 flex items-center justify-between ${testResults.every(r => r.pass) ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-=======
         <div className={`mb-4 rounded-xl border px-4 py-3 flex items-center justify-between ${testResults.every(r => r.pass) ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400'}`}>
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
           <div className="flex items-center gap-2">
             <span>{testResults.every(r => r.pass) ? '✅' : '❌'}</span>
             <span className="font-semibold text-sm">{testResults.every(r => r.pass) ? (verdict || 'Accepted') : (verdict || 'Wrong Answer')}</span>
@@ -226,11 +206,7 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict,
         </div>
       )}
       {!isRunning && !isSubmitting && !testResults?.length && verdict && (
-<<<<<<< HEAD
-        <div className={`mb-4 rounded-xl border px-4 py-3 flex items-center gap-2 ${verdict === 'ACCEPTED' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-=======
         <div className={`mb-4 rounded-xl border px-4 py-3 flex items-center gap-2 ${verdict === 'ACCEPTED' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400'}`}>
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
           <span>{verdict === 'ACCEPTED' ? '✅' : '❌'}</span>
           <span className="font-semibold text-sm">{verdict}</span>
         </div>
@@ -275,13 +251,8 @@ function ResultsContent({ isRunning, isSubmitting, output, testResults, verdict,
             )}
             {current?.error != null && (
               <div>
-<<<<<<< HEAD
-                <div className="text-xs text-red-500 font-medium uppercase tracking-wider mb-1.5">Runtime Error</div>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 font-mono text-xs text-red-700 whitespace-pre-wrap">{current.error}</div>
-=======
                 <div className="text-xs text-red-500 font-semibold uppercase tracking-wider mb-1.5">Runtime Error</div>
                 <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg p-3 font-mono text-xs text-red-700 dark:text-red-400 whitespace-pre-wrap">{current.error}</div>
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
               </div>
             )}
           </div>

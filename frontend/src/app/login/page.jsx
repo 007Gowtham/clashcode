@@ -7,10 +7,6 @@ import api from '@/lib/axios';
 import { setCredentials } from '@/store/slices/authSlice';
 import { PageTransition } from '@/components/common/PageTransition';
 
-<<<<<<< HEAD
-// Inner component that safely uses useSearchParams (must be inside Suspense)
-=======
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -67,38 +63,6 @@ function LoginForm() {
           {info && <div className="bg-[#f6ffed] dark:bg-[#1b2b1b] border border-[#b7eb8f] dark:border-[#274c27] text-[#52c41a] rounded-lg px-4 py-2.5 mb-5 text-[13px] font-medium">{info}</div>}
           {error && <div className="bg-[#fff2f0] dark:bg-[#2c1b1b] border border-[#ffccc7] dark:border-[#5c2727] text-[#ff4d4f] rounded-lg px-4 py-2.5 mb-5 text-[13px] font-medium">{error}</div>}
 
-<<<<<<< HEAD
-          <AuthTabs activeTab="signin" />
-
-          {info && <div className="bg-green-50 border border-green-100 text-green-600 rounded-xl px-4 py-3 mb-6 text-xs font-semibold">{info}</div>}
-          {error && <div className="bg-red-50 border border-red-100 text-red-500 rounded-xl px-4 py-3 mb-6 text-xs font-semibold">{error}</div>}
-
-          <form onSubmit={submit} className="space-y-6">
-            <Input
-              name="email"
-              label="EMAIL"
-              type="email"
-              value={form.email}
-              onChange={handle}
-              required
-              placeholder="name@clashcode.com"
-              disabled={loading}
-            />
-
-            <Input
-              name="password"
-              label="PASSWORD"
-              type="password"
-              value={form.password}
-              onChange={handle}
-              required
-              placeholder="••••••••"
-              disabled={loading}
-            />
-
-            <div className="flex justify-end !mt-2">
-              <Link href="/forgot-password" className="text-[10px] font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest">Forgot password?</Link>
-=======
           <form onSubmit={submit} className="space-y-4">
             <div>
               <input
@@ -111,7 +75,6 @@ function LoginForm() {
                 disabled={loading}
                 className="w-full px-4 py-2.5 bg-white dark:bg-[#262626] border border-[#d9d9d9] dark:border-[#333333] rounded-lg text-sm text-[#262626] dark:text-white placeholder-[#bfbfbf] dark:placeholder-[#8c8c8c] focus:outline-none focus:border-[#262626] dark:focus:border-[#ffa116] transition-all disabled:opacity-50"
               />
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
             </div>
 
             <div>
@@ -159,10 +122,6 @@ function LoginForm() {
   );
 }
 
-<<<<<<< HEAD
-// Wrap in Suspense — required by Next.js for components that call useSearchParams()
-=======
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>

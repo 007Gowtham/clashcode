@@ -46,19 +46,12 @@ public final class SubmissionJudgeEngine {
             String input = (String) tc.get("input");
             String expected = ((String) tc.get("expectedOutput")).trim();
 
-<<<<<<< HEAD
-=======
             long timeoutMs = calculateTimeoutMs(problem.getTimeLimitMs(), language);
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
             SandboxResult result = sandbox.run(SandboxRequest.builder()
                     .language(language)
                     .code(code)
                     .stdin(input)
-<<<<<<< HEAD
-                    .timeoutMs(problem.getTimeLimitMs() + compileBuffer(language))
-=======
                     .timeoutMs(timeoutMs)
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
                     .memoryLimit(problem.getMemoryLimitMb() + "m")
                     .build());
 
@@ -109,10 +102,7 @@ public final class SubmissionJudgeEngine {
             Map<String, Object> tcResult = new LinkedHashMap<>();
             tcResult.put("passed", casePassed);
             tcResult.put("timeMs", result.getExecutionTimeMs());
-<<<<<<< HEAD
-=======
             tcResult.put("isHidden", isHidden);
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
             if (!isHidden) {
                 tcResult.put("input", input);
                 tcResult.put("expected", expected);
@@ -133,16 +123,6 @@ public final class SubmissionJudgeEngine {
         return new JudgeResult(verdict, passed, maxTime, resultMap);
     }
 
-<<<<<<< HEAD
-    private static long compileBuffer(String language) {
-        if (language == null)
-            return 0L;
-        return switch (language.toLowerCase()) {
-            case "java" -> 8000L;
-            case "cpp" -> 5000L;
-            default -> 0L;
-        };
-=======
     private static long calculateTimeoutMs(int baseTimeLimitMs, String language) {
         if (language == null) return baseTimeLimitMs;
 
@@ -165,6 +145,5 @@ public final class SubmissionJudgeEngine {
         };
 
         return adjustedLimit + buffer;
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
     }
 }

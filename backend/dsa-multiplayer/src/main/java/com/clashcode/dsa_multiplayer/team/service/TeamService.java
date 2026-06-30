@@ -34,10 +34,7 @@ public class TeamService {
     private final TeamMemberRepository teamMemberRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
-<<<<<<< HEAD
-=======
     private final com.clashcode.dsa_multiplayer.common.service.WebSocketService webSocketService;
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
 
     @Transactional
     public TeamResponse createTeam(CreateTeamRequest request, User leader) {
@@ -80,10 +77,7 @@ public class TeamService {
         userRepository.save(currentLeader);
 
         log.info("Team created: {} with code {} inside room {}", team.getName(), team.getCode(), room.getCode());
-<<<<<<< HEAD
-=======
         webSocketService.push("/topic/room/" + room.getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
         return convertToTeamResponse(team);
     }
 
@@ -127,10 +121,7 @@ public class TeamService {
         team = teamRepository.save(team);
 
         log.info("User {} joined team {}", currentUser.getUsername(), team.getCode());
-<<<<<<< HEAD
-=======
         webSocketService.push("/topic/room/" + room.getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
         return convertToTeamResponse(team);
     }
 
@@ -155,10 +146,7 @@ public class TeamService {
         team = teamRepository.save(team);
 
         log.info("User {} toggled ready status to {} in team {}", user.getUsername(), member.isReady(), team.getCode());
-<<<<<<< HEAD
-=======
         webSocketService.push("/topic/room/" + team.getRoom().getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
         return convertToTeamResponse(team);
     }
 
@@ -196,10 +184,7 @@ public class TeamService {
         team = teamRepository.save(team);
 
         log.info("User {} kicked {} from team {}", leader.getUsername(), kickedUser != null ? kickedUser.getUsername() : userIdToKick, team.getCode());
-<<<<<<< HEAD
-=======
         webSocketService.push("/topic/room/" + team.getRoom().getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
         return convertToTeamResponse(team);
     }
 
@@ -241,10 +226,7 @@ public class TeamService {
             teamRepository.save(team);
             log.info("User {} left team {}", user.getUsername(), team.getCode());
         }
-<<<<<<< HEAD
-=======
         webSocketService.push("/topic/room/" + team.getRoom().getId() + "/events", java.util.Map.of("type", "LOBBY_UPDATE"));
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
     }
 
     public List<TeamResponse> getTeamsInRoom(UUID roomId) {

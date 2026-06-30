@@ -175,8 +175,6 @@ public class AuthService {
         log.info("User {} logged out, all refresh tokens revoked", user.getUsername());
     }
 
-<<<<<<< HEAD
-=======
     // ── Change Password (authenticated) ───────────────────────────────────────
 
     @Transactional
@@ -191,7 +189,6 @@ public class AuthService {
         log.info("Password changed for user {}", user.getUsername());
     }
 
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
     // ── Forgot Password ───────────────────────────────────────────────────────
 
     @Transactional
@@ -323,10 +320,7 @@ public class AuthService {
                 .isVerified(user.isVerified())
                 .activeRoomId(user.getActiveRoomId())
                 .currentTeamId(user.getCurrentTeamId())
-<<<<<<< HEAD
-=======
                 .profilePictureKey(user.getProfilePictureKey())
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
                 .build();
     }
 

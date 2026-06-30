@@ -14,8 +14,6 @@ spring:
           auth: true
           starttls:
             enable: true
-<<<<<<< HEAD
-=======
   datasource:
     url: jdbc:postgresql://ep-mute-poetry-ao66bnri.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
     username: ${DB_USERNAME}
@@ -28,7 +26,6 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
   cloud:
     aws:
       region:
@@ -59,10 +56,6 @@ app:
     cpus: ${SANDBOX_CPUS:0.5}
     timeout-ms: ${SANDBOX_TIMEOUT_MS:5000}
   sqs:
-<<<<<<< HEAD
-    judge-queue: compiler-queue
-=======
     judge-queue: compiler-queue
   s3:
     bucket: clashcode-profiles-357919579159-ap-south-1-an
->>>>>>> 7c3775e365c46862f352e28838721a26494e0bd7
