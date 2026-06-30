@@ -11,7 +11,7 @@ export const initSocket = (accessToken) => {
   if (typeof window === 'undefined') return null;
   if (socket?.connected) return socket;
 
-  socket = io('http://13.201.230.50:5000', {
+  socket = io('https://clashcode.duckdns.org', {
     auth: { token: accessToken },
     transports: ['websocket', 'polling'],
     withCredentials: true,
