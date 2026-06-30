@@ -178,7 +178,7 @@ export default function BattlePage() {
   // ── Socket + init ─────────────────────────────────────
   useEffect(() => {
     if (!id || id === 'undefined') { router.push('/rooms'); return; }
-    const socketUrl = 'http://13.201.230.50:5000';
+    const socketUrl = 'https://clashcode.duckdns.org';
     const socket = io(socketUrl);
     socketRef.current = socket;
 

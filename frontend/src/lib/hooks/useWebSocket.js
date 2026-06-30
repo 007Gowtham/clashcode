@@ -53,7 +53,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
-const WS_URL = 'http://13.201.230.50:5000';
+const WS_URL = 'https://clashcode.duckdns.org';
 
 /**
  * @param {string|null} topic      STOMP destination; pass null to stay disconnected

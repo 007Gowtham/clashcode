@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const apiBaseUrl =  'http://13.201.230.50:5000/';
+const apiBaseUrl =  'https://clashcode.duckdns.org/';
 
 // Main API instance — all app requests use this
 const api = axios.create({ baseURL: apiBaseUrl });
