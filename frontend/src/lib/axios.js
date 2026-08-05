@@ -1,6 +1,13 @@
 import axios from 'axios';
+import { mockRequest } from './mockApi';
 
-const apiBaseUrl =  'https://clashcode.duckdns.org/';
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔧 MOCK MODE — set to true to bypass the real backend and use fake data
+//    Set to false when your backend is running and you want real API calls.
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOCK_MODE = true;
+
+const apiBaseUrl = 'https://clashcode.duckdns.org/';
 
 // Main API instance — all app requests use this
 const api = axios.create({ baseURL: apiBaseUrl });
@@ -8,18 +15,65 @@ const api = axios.create({ baseURL: apiBaseUrl });
 // Separate instance used only for token refresh to avoid infinite loops
 const refreshApi = axios.create({ baseURL: apiBaseUrl });
 
-// ── Request Interceptor ────────────────────────────────────────────────────────
-// Attach the current access token to every outgoing request
-api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+// ── Mock Interceptor ──────────────────────────────────────────────────────────
+// When MOCK_MODE is enabled, short-circuit all requests before they hit the network
+api.interceptors.request.use(async (config) => {
+  if (!MOCK_MODE) {
+    // Real mode: attach access token as usual
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  }
+
+  // Mock mode: intercept and resolve from mockApi
+  const method = config.method?.toUpperCase() || 'GET';
+  // Strip the base URL to get the path (e.g. "/auth/login")
+  const rawUrl = config.url || '';
+  const path = rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl;
+
+  try {
+    const body = config.data
+      ? (typeof config.data === 'string' ? JSON.parse(config.data) : config.data)
+      : undefined;
+
+    const mockResponse = await mockRequest(method, path, body);
+
+    // Throw an axios-cancel to prevent the real request from firing,
+    // then resolve via a resolved promise using the adapter pattern.
+    config.adapter = () => Promise.resolve({
+      data: mockResponse.data,
+      status: mockResponse.status,
+      statusText: 'OK',
+      headers: {},
+      config,
+      request: {},
+    });
+  } catch (err) {
+    console.error('[MOCK API] Error in mock handler:', err);
+  }
+
   return config;
 });
 
-// ── Response Interceptor ───────────────────────────────────────────────────────
-// Silently refresh the access token when a 401 is received
-let isRefreshing = false;       // prevents parallel refresh storms
-let failedQueue = [];           // queued requests waiting for the new token
+// ── Real Response Interceptor ─────────────────────────────────────────────────
+// Only applies when MOCK_MODE = false (real backend)
+
+const normalizeIds = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(normalizeIds);
+  const copy = { ...obj };
+  if (copy.id && !copy._id) copy._id = copy.id;
+  if (copy._id && !copy.id) copy.id = copy._id;
+  for (const key of Object.keys(copy)) {
+    if (copy[key] && typeof copy[key] === 'object') {
+      copy[key] = normalizeIds(copy[key]);
+    }
+  }
+  return copy;
+};
+
+let isRefreshing = false;
+let failedQueue = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
@@ -29,48 +83,26 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-const normalizeIds = (obj) => {
-  if (!obj || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) {
-    return obj.map(normalizeIds);
-  }
-  const copy = { ...obj };
-  if (copy.id && !copy._id) {
-    copy._id = copy.id;
-  }
-  if (copy._id && !copy.id) {
-    copy.id = copy._id;
-  }
-  for (const key of Object.keys(copy)) {
-    if (copy[key] && typeof copy[key] === 'object') {
-      copy[key] = normalizeIds(copy[key]);
-    }
-  }
-  return copy;
-};
-
 api.interceptors.response.use(
   (response) => {
-    if (response.data) {
-      response.data = normalizeIds(response.data);
-    }
+    if (response.data) response.data = normalizeIds(response.data);
     return response;
   },
   async (error) => {
+    // In mock mode, errors shouldn't normally happen — just reject
+    if (MOCK_MODE) return Promise.reject(error);
+
     const originalRequest = error.config;
 
-    // Only attempt refresh on 401 and only once per request (_retry flag)
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
 
-    // Skip the refresh endpoint itself to avoid infinite loops
     if (originalRequest.url?.includes('/auth/refresh')) {
       return Promise.reject(error);
     }
 
     if (isRefreshing) {
-      // Queue this request until the in-flight refresh completes
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       }).then((token) => {
@@ -82,12 +114,10 @@ api.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    const storedRefreshToken = typeof window !== 'undefined'
-      ? localStorage.getItem('refreshToken')
-      : null;
+    const storedRefreshToken =
+      typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
 
     if (!storedRefreshToken) {
-      // No refresh token — must log in again
       isRefreshing = false;
       processQueue(error);
       forceLogout();
@@ -101,17 +131,13 @@ api.interceptors.response.use(
 
       const { accessToken, refreshToken: newRefreshToken } = res.data.data;
 
-      // Persist the new tokens
       localStorage.setItem('token', accessToken);
       if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
 
-      // Notify all queued requests of the new token
       processQueue(null, accessToken);
 
-      // Retry the original request with the new access token
       originalRequest.headers.Authorization = `Bearer ${accessToken}`;
       return api(originalRequest);
-
     } catch (refreshError) {
       processQueue(refreshError);
       forceLogout();
@@ -122,10 +148,6 @@ api.interceptors.response.use(
   }
 );
 
-/**
- * Clears all stored tokens and redirects to the login page.
- * Isolated here so we don't need to import Redux store into this file.
- */
 function forceLogout() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('token');

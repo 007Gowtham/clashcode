@@ -3,69 +3,47 @@
 import { X } from 'lucide-react';
 
 const Modal = ({
- isOpen,
- onClose,
- title,
- children,
- footer,
- maxWidth = 'max-w-3xl',
- className = '',
+  isOpen,
+  onClose,
+  title,
+  children,
+  footer,
+  maxWidth = 'max-w-3xl',
+  className = '',
 }) => {
- if (!isOpen) return null;
+  if (!isOpen) return null;
 
- return (
- <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/20 dark:bg-black/50 backdrop-blur-sm p-4">
- {/* Background blur effect */}
- <div className="absolute inset-0 z-0 flex blur-[4px] scale-[1.01] pointer-events-none opacity-40 dark:opacity-5 grayscale-[20%]">
- <div className="w-16 border-r border-gray-200 bg-white flex flex-col items-center py-5">
- <div className="w-9 h-9 bg-emerald-500 rounded-xl mb-8"></div>
- <div className="flex flex-col gap-6 w-full px-3">
- <div className="w-10 h-10 bg-gray-100 rounded-xl"></div>
- <div className="w-10 h-10 rounded-xl border border-gray-100"></div>
- </div>
- </div>
- <div className="flex-1 bg-white">
- <div className="h-16 border-b border-gray-200"></div>
- <div className="flex h-full">
- <div className="w-[30%] border-r border-gray-200 p-6">
- <div className="h-6 w-1/2 bg-gray-100 rounded mb-4"></div>
- <div className="h-4 w-full bg-gray-50 rounded mb-2"></div>
- <div className="h-4 w-3/4 bg-gray-50 rounded mb-2"></div>
- </div>
- <div className="flex-1 bg-gray-50/50"></div>
- </div>
- </div>
- </div>
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-retro-ink/40 backdrop-blur-sm p-4">
+      {/* Modal Card — neobrutalist hard border + shadow */}
+      <div
+        className={`bg-retro-cream w-full ${maxWidth} flex flex-col max-h-[90vh] border-2 border-retro-ink shadow-retro-lg animate-in fade-in zoom-in-95 duration-200 relative z-10 ${className}`}
+      >
+        {/* Modal Header */}
+        {title && (
+          <div className="px-6 py-4 border-b-2 border-retro-ink flex items-center justify-between flex-shrink-0 bg-retro-ink">
+            <h2 className="text-base font-black uppercase tracking-widest text-white">{title}</h2>
+            <button
+              onClick={onClose}
+              className="text-retro-paper hover:text-retro-orange transition-colors p-1"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
 
- {/* Modal Card */}
- <div
- className={`bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl shadow-gray-200/50 dark:shadow-none w-full ${maxWidth} flex flex-col max-h-[90vh] border border-gray-200 dark:border-[#2d2d2d] animate-in fade-in zoom-in-95 duration-200 relative z-10 ${className}`}
- >
- {/* Modal Header */}
- {title && (
- <div className="px-6 py-4 border-b border-gray-100 dark:border-[#2d2d2d] flex items-center justify-between flex-shrink-0">
- <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">{title}</h2>
- <button
- onClick={onClose}
- className="text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 p-2 rounded-lg transition-colors"
- >
- <X size={24} className="w-5 h-5" />
- </button>
- </div>
- )}
+        {/* Modal Content */}
+        <div className="flex-1 overflow-y-auto p-8 bg-retro-paper">{children}</div>
 
- {/* Modal Content */}
- <div className="flex-1 overflow-y-auto custom-scrollbar p-8">{children}</div>
-
- {/* Modal Footer */}
- {footer && (
- <div className="px-6 py-5 border-t border-gray-100 dark:border-[#2d2d2d] bg-gray-50/50 dark:bg-[#1a1a1a]/50 rounded-b-2xl flex items-center justify-between flex-shrink-0">
- {footer}
- </div>
- )}
- </div>
- </div>
- );
+        {/* Modal Footer */}
+        {footer && (
+          <div className="px-6 py-5 border-t-2 border-retro-ink bg-retro-cream flex items-center justify-between flex-shrink-0">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default Modal;

@@ -149,34 +149,6 @@ export default function BattlePage() {
 
   const q = myQuestions[activeQ];
 
- // ── Real-time leaderboard via STOMP WebSocket ─────────────────────────
- // Subscribed for the lifetime of the page — updates arrive automatically
- // whenever a teammate's score changes (no more fetchLeaderboard() polling).
- useWebSocket(
-  id ? `/topic/room/${id}/leaderboard` : null,
-  (data) => dispatch(setLeaderboard(Array.isArray(data) ? data : []))
- );
-
- // Apply the STOMP verdict when it arrives
- useEffect(() => {
-  if (!wsVerdict || !pendingSubmissionId) return;
-  // Safety guard: only apply if the verdict is for THIS submission.
-  const verdictId = wsVerdict.submissionId?.toString();
-  if (verdictId && verdictId !== pendingSubmissionId.toString()) return;
-
-  const statusStr = wsVerdict.status || 'UNKNOWN';
-  setVerdict(statusStr);
-  setSubmitting(false);
-  setPendingSubmissionId(null); // unsubscribe after receiving verdict
-  if (statusStr === 'ACCEPTED') {
-   const problemId = myQuestions[activeQ]?.id || myQuestions[activeQ]?._id;
-   if (problemId) setAccepted(p => ({ ...p, [problemId]: true }));
-  }
-  // Refresh submissions list — leaderboard now updates via WebSocket push
-  fetchSubmissions();
- }, [wsVerdict, pendingSubmissionId]); // eslint-disable-line react-hooks/exhaustive-deps
-
- const q = myQuestions[activeQ];
 
   // ── Socket + init ─────────────────────────────────────
   useEffect(() => {
@@ -189,152 +161,104 @@ export default function BattlePage() {
     const userIdVal = user?._id || user?.id;
     socket.emit('user:join', { userId: userIdVal });
 
- // ── Derived ───────────────────────────────────────────
- const userIdStr = mounted ? (user?._id || user?.id)?.toString() : '';
- const isAdmin = mounted ? room?.adminId?.toString() === userIdStr : false;
-
- // ── Code sync ─────────────────────────────────────────
- useEffect(() => {
- if (!q) return;
- const savedCode = codes[q._id]?.[lang];
- setCode(savedCode !== undefined ? savedCode : (q.starterCode?.[lang] || ''));
- }, [activeQ, lang, q]);
+    fetchInitialData();
 
     return () => socket.disconnect();
   }, [id, user?._id, user?.id]);
 
+  // ── Derived ───────────────────────────────────────────
+  const userIdStr = mounted ? (user?._id || user?.id)?.toString() : '';
+  const isAdmin = mounted ? room?.adminId?.toString() === userIdStr : false;
+
+  const handleCodeChange = (newCode) => {
+    setCode(newCode);
+    if (q) {
+      setCodes(prev => ({
+        ...prev,
+        [q._id]: {
+          ...(prev[q._id] || {}),
+          [lang]: newCode
+        }
+      }));
+    }
+  };
+
+  // ── Code sync ─────────────────────────────────────────
+  useEffect(() => {
+    if (!q) return;
+    const savedCode = codes[q._id]?.[lang];
+    setCode(savedCode !== undefined ? savedCode : (q.starterCode?.[lang] || ''));
+  }, [activeQ, lang, q]);
+
   const fetchInitialData = async () => {
     setLoading(true);
-    try {
-      // Sync fresh user profile picture state
-      api.get('/auth/me')
-        .then(res => {
-          const profile = res.data?.data;
-          if (profile) dispatch(updateUser(profile));
-        })
-        .catch(() => {});
-
-      const { data: qRes } = await api.get(`/rooms/${id}/questions`);
-      const qData = qRes?.data;
-      const questions = qData?.questions || [];
+    // SYNC DUMMY DATA DIRECTLY
+    setTimeout(() => {
+      const questions = [{
+        _id: 'dummy1',
+        id: 'dummy1',
+        title: 'Two Sum',
+        difficulty: 'Easy',
+        description: 'Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.',
+        starterCode: { python: 'def twoSum(nums, target):\n    # Write your code here\n    pass\n', cpp: 'class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        \n    }\n};' },
+        sampleTestCases: [
+          { input: 'nums = [2,7,11,15], target = 9', expectedOutput: '[0,1]' },
+          { input: 'nums = [3,2,4], target = 6', expectedOutput: '[1,2]' }
+        ],
+        timeLimit: 1,
+        memoryLimit: 256,
+        score: 10
+      }];
       dispatch(setMyQuestions(questions));
-      if (qData?.endTime) dispatch(setEndTime(qData.endTime));
 
-      const { data: rRes } = await api.get(`/rooms/${id}`);
-      const rData = rRes?.data;
-      if (rData) dispatch(setRoom(rData));
-    } catch (err) {
-      console.error('Failed to restore contest session:', err);
-    } finally {
+      const roomData = {
+        _id: id,
+        name: 'Dummy Test Room',
+        status: 'PLAYING',
+        adminId: user?._id || user?.id,
+        members: []
+      };
+      dispatch(setRoom(roomData));
       setLoading(false);
-    }
+    }, 500);
   };
 
   const fetchLeaderboard = async () => {
-    try {
-      const { data } = await api.get(`/rooms/${id}/leaderboard`);
-      dispatch(setLeaderboard(data?.data || []));
-    } catch { }
+    dispatch(setLeaderboard([]));
   };
 
   const fetchSubmissions = async () => {
-    try {
-      setSubmissionsLoading(true);
-      const { data } = await api.get(`/submissions/room/${id}`);
-      // Filter out PENDING — only show finalized submissions.
-      // PENDING state is already shown by the "Evaluating..." spinner.
-      // Without this filter, submitting causes a flash of PENDING in the tab
-      // which is then replaced by the final verdict after the worker finishes.
-      const finalized = (data?.data || [])
-        .filter(s => s.status !== 'PENDING')
-        .reverse();
-      setSubmissions(finalized);
-    } catch (err) {
-      console.error('Failed to fetch submissions:', err);
-    } finally {
-      setSubmissionsLoading(false);
-    }
+    setSubmissions([]);
   };
 
- const { data: rRes } = await api.get(`/rooms/${id}`);
- const rData = rRes?.data;
- if (rData) dispatch(setRoom(rData));
- } catch (err) {
- console.error('Failed to restore contest session:', err);
- } finally {
- setLoading(false);
- }
- };
 
   // ── Run / Submit ──────────────────────────────────────
   const run = async (codeOverride, stdinOverride) => {
     if (!q) return;
-    const codeToRun = codeOverride ?? code;
+    setProblemTab('result');
     setRunning(true); setOutput(''); setVerdict(''); setTestResults([]); setLastAction('RUN');
-    try {
-      // Run against first sample test case via /submissions/run
-      const problemId = q.id || q._id;
-      const { data: res } = await api.post('/submissions/run', {
-        problemId,
-        language: lang,
-        code: codeToRun,
-      });
-      const runData = res?.data;
-      if (runData?.testResults && runData.testResults.length > 0) {
-        const trResults = runData.testResults.map(r => ({
-          pass: r.passed,
-          input: r.input,
-          actualOutput: r.got,
-          expectedOutput: r.expected,
-          error: r.error
-        }));
-        setTestResults(trResults);
-        setVerdict(runData.status);
-        setOutput(null);
-      } else {
-        setOutput(runData?.output || runData?.error || '(no output)');
-      }
-    } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Run failed';
-      setOutput(`Error: ${msg}`);
-    } finally {
-      setRunning(false);
-    }
+    setTimeout(() => {
+        setTestResults([
+          { pass: true, input: 'nums = [2,7,11,15], target = 9', actualOutput: '[0,1]', expectedOutput: '[0,1]' },
+          { pass: false, input: 'nums = [3,2,4], target = 6', actualOutput: '[0,0]', expectedOutput: '[1,2]', error: 'Wrong Answer' }
+        ]);
+        setVerdict('WRONG_ANSWER');
+        setRunning(false);
+    }, 1000);
   };
 
   const submit = async (codeOverride) => {
     if (!myQuestions[activeQ]) return;
-    const codeToSubmit = codeOverride ?? code;
-    const problemId = myQuestions[activeQ].id || myQuestions[activeQ]._id;
+    setProblemTab('result');
     setSubmitting(true); setVerdict(''); setTestResults([]); setOutput(''); setLastAction('SUBMIT');
-    setPendingSubmissionId(null); // reset any previous subscription
-    try {
-      const { data: res } = await api.post('/submissions/submit', {
-        problemId,
-        roomId: id,
-        language: lang,
-        code: codeToSubmit,
-      });
-      const subData = res?.data;
-      const submissionId = subData?.id || subData?._id;
-      if (submissionId) {
-        // Subscribe to real-time verdict via STOMP WebSocket
-        setPendingSubmissionId(submissionId);
-        // isJudging = true until the WebSocket verdict arrives
-      } else {
-        // Fallback: backend returned full verdict immediately (e.g. /run)
-        const statusVerdict = subData?.status || 'UNKNOWN';
-        setVerdict(statusVerdict);
+    setTimeout(() => {
+        setVerdict('ACCEPTED');
+        const problemId = q.id || q._id;
+        if (problemId) {
+          setAccepted(p => ({ ...p, [problemId]: true }));
+        }
         setSubmitting(false);
-        fetchLeaderboard();
-        fetchSubmissions();
-      }
-    } catch (err) {
-      setVerdict('ERROR');
-      setOutput(err.response?.data?.message || 'Submit failed');
-      setSubmitting(false);
-      fetchSubmissions();
-    }
+    }, 1500);
   };
 
  // ── Timer end ─────────────────────────────────────────
@@ -363,52 +287,22 @@ export default function BattlePage() {
 
   // ── Render ────────────────────────────────────────────
   return (
-    <div className="h-screen w-full bg-[#f5f7f9] dark:bg-[#111111] text-slate-900 dark:text-[#eff1f6] overflow-hidden flex flex-col antialiased transition-colors duration-300" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-
- const submit = async (codeOverride) => {
- if (!myQuestions[activeQ]) return;
- const codeToSubmit = codeOverride ?? code;
- const problemId = myQuestions[activeQ].id || myQuestions[activeQ]._id;
- setSubmitting(true); setVerdict(''); setTestResults([]); setLastAction('SUBMIT');
- setPendingSubmissionId(null); // reset any previous subscription
- try {
-  const { data: res } = await api.post('/submissions/submit', {
-   problemId,
-   roomId: id,
-   language: lang,
-   code: codeToSubmit,
-  });
-  const subData = res?.data;
-  const submissionId = subData?.id || subData?._id;
-  if (submissionId) {
-   // Subscribe to real-time verdict via STOMP WebSocket
-   setPendingSubmissionId(submissionId);
-   // isJudging = true until the WebSocket verdict arrives
-  } else {
-   // Fallback: backend returned full verdict immediately (e.g. /run)
-   const statusVerdict = subData?.status || 'UNKNOWN';
-   setVerdict(statusVerdict);
-   setSubmitting(false);
-   fetchLeaderboard();
-   fetchSubmissions();
-  }
- } catch (err) {
-  setVerdict('ERROR');
-  setOutput(err.response?.data?.message || 'Submit failed');
-  setSubmitting(false);
-  fetchSubmissions();
- }
- };
-
+    <div className="h-screen w-full bg-[#FDFBF7] text-retro-ink overflow-hidden flex flex-col antialiased">
+      
+      {/* Top Header */}
+      <header className="w-full px-4 py-3 flex items-center justify-between border-b-[4px] border-retro-ink bg-[#b2ff59] relative z-10 shadow-[0_6px_0px_rgba(15,23,42,1)] shrink-0">
+        
         {/* Left: Logo + Room Name */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-slate-900 dark:bg-[#262626] border border-transparent dark:border-[#333333] rounded-lg flex items-center justify-center text-white font-semibold text-sm shadow-md dark:shadow-none shrink-0 select-none">Λ</div>
-          <div className="flex flex-col gap-0">
-            <span className="text-sm font-medium text-slate-900 dark:text-white leading-none tracking-tight">
-              {room?.name || 'Battle Arena'}
-            </span>
-            <span className="text-[10px] font-medium text-slate-400 dark:text-[#8c8c8c] leading-none mt-0.5">
-              {room?.code || ''}
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-10 h-10 border-[3px] border-retro-ink bg-[#ff4081] flex items-center justify-center text-white font-black text-xl shadow-[3px_3px_0px_rgba(15,23,42,1)] rotate-[-3deg] hover:rotate-0 transition-transform cursor-pointer"
+            onClick={() => router.push('/rooms')}
+          >
+            Λ
+          </div>
+          <div className="flex flex-col items-start gap-1">
+            <span className="uppercase tracking-tighter text-retro-ink text-lg hidden sm:flex gap-1.5 bg-white px-2 py-0.5 border-[3px] border-retro-ink shadow-[2px_2px_0px_rgba(15,23,42,1)] rotate-[1deg]">
+              <span className="font-heading">Battle</span><span className="font-heading-outline text-[#ff4081]">Arena</span>
             </span>
           </div>
         </div>
@@ -416,86 +310,54 @@ export default function BattlePage() {
         {/* Center: Team & Score */}
         <div className="flex items-center gap-4 absolute left-1/2 -translate-x-1/2">
           {myTeam && (
-            <div className="flex items-center gap-3 px-3 py-1.5 bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-sm border border-slate-200 dark:border-[#2d2d2d] rounded-lg shadow-sm">
-              <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-700 dark:text-slate-300">
-                <Users className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <div className="flex items-center gap-3 px-3 py-1.5 bg-white border-[3px] border-retro-ink shadow-[4px_4px_0px_rgba(15,23,42,1)] rotate-[-1deg]">
+              <div className="flex items-center gap-2 text-sm font-black uppercase text-retro-ink">
+                <Users className="w-4 h-4 text-retro-blue shrink-0" strokeWidth={3} />
                 <span>{myTeam.name}</span>
-                {/* Overlapping teammate avatars */}
-                {myTeam.members && myTeam.members.length > 0 && (
-                  <div className="flex -space-x-1.5 ml-1.5 overflow-hidden">
-                    {myTeam.members.map((member, idx) => {
-                      const name = member.username || 'U';
-                      return (
-                        <TeammateAvatar
-                          key={member.id || idx}
-                          userId={member.userId}
-                          username={name}
-                          size="h-5 w-5"
-                        />
-                      );
-                    })}
-                  </div>
-                )}
               </div>
-              <div className="w-px h-3.5 bg-slate-200 dark:bg-[#2d2d2d]" />
-              <div className="flex items-center gap-1.5 text-[13px] font-medium text-emerald-600 dark:text-emerald-400">
-                <Trophy className="w-3.5 h-3.5 text-[#ffa116]" />
+              <div className="w-1 h-5 bg-retro-ink" />
+              <div className="flex items-center gap-1.5 text-sm font-black text-emerald-500 uppercase tracking-wider">
+                <Trophy className="w-4 h-4 text-[#ffa116]" strokeWidth={3} />
                 {leaderboard?.find(t => t.teamName === myTeam?.name)?.score ?? myTeam?.score ?? 0}
-                <span className="text-slate-400 dark:text-slate-500 font-normal ml-0.5">pts</span>
+                <span className="text-retro-ink font-bold">PTS</span>
               </div>
             </div>
           )}
         </div>
 
- // ── Render ────────────────────────────────────────────
- return (
- <div className="h-screen w-full bg-slate-50 text-slate-900 overflow-hidden flex flex-col antialiased">
-
+        {/* Right: Actions */}
+        <div className="flex items-center gap-4">
           {/* Leaderboard button */}
           <button
             onClick={() => router.push(`/room/${id}/results`)}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-[#262626] px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-[#2d2d2d]"
+            className="flex items-center gap-1.5 font-mono text-[11px] font-black uppercase tracking-widest text-white bg-retro-blue px-3 py-2 border-[3px] border-retro-ink shadow-[3px_3px_0px_rgba(15,23,42,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_rgba(15,23,42,1)] transition-all rotate-1"
           >
-            <Trophy className="w-3.5 h-3.5 text-yellow-500" />
-            Leaderboard
+            <Trophy className="w-4 h-4 text-yellow-300" strokeWidth={3} />
+            <span className="hidden sm:inline">Leaderboard</span>
           </button>
 
           {/* Timer */}
-          <div className="flex items-center gap-1.5 bg-white/80 dark:bg-[#1e1e1e]/80 border border-slate-200 dark:border-[#2d2d2d] px-3 py-1.5 rounded-lg shadow-sm">
-            <Clock className="w-3.5 h-3.5 text-blue-500 dark:text-[#ffa116]" />
-            <div className="text-[13px] font-medium text-slate-900 dark:text-white">
+          <div className="flex items-center gap-2 bg-white border-[3px] border-retro-ink px-3 py-1.5 shadow-[3px_3px_0px_rgba(15,23,42,1)] rotate-[-1deg]">
+            <Clock className="w-4 h-4 text-[#ff4081]" strokeWidth={3} />
+            <div className="text-sm font-black text-retro-ink">
               <Timer endTime={endTime} onEnd={handleTimerEnd} />
             </div>
           </div>
 
-          <div className="w-px h-5 bg-slate-200/80 dark:bg-[#2d2d2d] mx-1" />
-
           {/* User chip */}
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-white/80 dark:bg-[#1e1e1e]/80 border border-slate-200 dark:border-[#2d2d2d] rounded-full shadow-sm">
-            <div className="w-5 h-5 rounded-full bg-slate-900 dark:bg-[#262626] border dark:border-[#333333] flex items-center justify-center text-white dark:text-[#eff1f6] text-[9px] font-semibold shrink-0">
+          <div className="hidden sm:flex items-center gap-2 px-2 py-1 bg-retro-yellow border-[3px] border-retro-ink shadow-[3px_3px_0px_rgba(15,23,42,1)] rotate-2">
+            <div className="w-6 h-6 bg-white border-[2px] border-retro-ink flex items-center justify-center text-retro-ink text-xs font-black shrink-0">
               {user?.username?.charAt(0).toUpperCase() || 'U'}
             </div>
-            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{user?.username || 'User'}</span>
+            <span className="text-xs font-black uppercase text-retro-ink pr-1">{user?.username || 'User'}</span>
           </div>
+        </div>
+      </header>
 
- {/* Leaderboard button */}
- <button
- onClick={() => router.push(`/room/${id}/results`)}
- className="flex items-center gap-1.5 text-[11px] font-medium   text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-slate-200"
- >
- <Trophy className="w-3.5 h-3.5 text-yellow-500" />
- Leaderboard
- </button>
-
- {/* Timer */}
- <div className="flex items-center gap-1.5 bg-white/80 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
- <Clock className="w-3.5 h-3.5 text-blue-500" />
- <div className="text-[13px] font-medium">
- <Timer endTime={endTime} onEnd={handleTimerEnd} />
- </div>
- </div>
-
-          <ResizablePanel defaultSize={38} minSize={25} className="flex flex-col bg-white dark:bg-[#1e1e1e] rounded-xl shadow-sm border border-gray-200 dark:border-[#2d2d2d] overflow-hidden">
+      {/* Main content: Resizable Panels */}
+      <main className="flex-1 flex flex-col p-4 overflow-hidden">
+        <ResizablePanelGroup orientation="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={38} minSize={25} className="flex flex-col bg-white border-[4px] border-retro-ink shadow-[4px_4px_0px_rgba(15,23,42,1)] overflow-hidden">
             <ProblemPanel
               activeTab={problemTab}
               onTabChange={setProblemTab}
@@ -523,20 +385,6 @@ export default function BattlePage() {
               submissions={submissions}
               submissionsLoading={submissionsLoading}
               leaderboard={leaderboard}
-            />
-          </ResizablePanel>
-
-          <ResizableHandle withHandle className="w-1.5 bg-gray-100 dark:bg-[#262626] mx-0.5 hover:bg-emerald-400/30 dark:hover:bg-[#ffa116]/30 transition-colors" />
-
-          <ResizablePanel defaultSize={62} minSize={30} className="flex flex-col bg-white dark:bg-[#1e1e1e] rounded-xl shadow-sm border border-gray-200 dark:border-[#2d2d2d] overflow-hidden">
-            <CodeEditorPanel
-              code={code}
-              setCode={handleCodeChange}
-              language={lang}
-              onLanguageChange={setLang}
-              onRun={(c) => run(c, '')}
-              onSubmit={(c) => submit(c)}
-              onResetCode={() => setCode('')}
               isRunning={running}
               isSubmitting={submitting}
               output={output ? { consoleOutput: output } : null}
@@ -547,63 +395,25 @@ export default function BattlePage() {
             />
           </ResizablePanel>
 
- <main className="flex-1 flex flex-col p-2 gap-2 overflow-hidden">
- <ResizablePanelGroup orientation="horizontal" className="flex-1">
+          <ResizableHandle withHandle className="w-4 bg-[#FDFBF7] mx-2 hover:bg-[#b2ff59]/30 transition-colors flex items-center justify-center cursor-col-resize z-20">
+            <div className="w-1.5 h-12 bg-retro-ink rounded-full" />
+          </ResizableHandle>
 
- <ResizablePanel defaultSize={38} minSize={25} className="flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
- <ProblemPanel
- activeTab={problemTab}
- onTabChange={setProblemTab}
- selectedQuestion={myQuestions[activeQ]?.id || myQuestions[activeQ]?._id}
- onQuestionSelect={(qid) => {
- const idx = myQuestions.findIndex(mq => (mq.id || mq._id) === qid);
- if (idx !== -1) {
- setActiveQ(idx);
- setOutput('');
- setVerdict('');
- setTestResults([]);
- }
- }}
- questions={myQuestions.map((mq) => ({
- id: mq.id || mq._id,
- title: mq.title,
- difficulty: mq.difficulty,
- description: mq.description,
- examples: mq.sampleTestCases?.map(tc => ({
- input: tc.input,
- output: tc.expectedOutput,
- })),
- constraints: mq.constraints,
- }))}
- submissions={submissions}
- submissionsLoading={submissionsLoading}
- leaderboard={leaderboard}
- />
- </ResizablePanel>
-
- <ResizableHandle withHandle className="w-1.5 bg-gray-100 mx-0.5 hover:bg-emerald-400/30 transition-colors" />
-
- <ResizablePanel defaultSize={62} minSize={30} className="flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
- <CodeEditorPanel
- code={code}
- setCode={handleCodeChange}
- language={lang}
- onLanguageChange={setLang}
- onRun={(c) => run(c, '')}
- onSubmit={(c) => submit(c)}
- onResetCode={() => setCode('')}
- isRunning={running}
- isSubmitting={submitting}
- output={output ? { consoleOutput: output } : null}
- testResults={testResults}
- verdict={verdict}
- isSubmitMode={lastAction === 'SUBMIT'}
- initialTestCases={myQuestions[activeQ]?.sampleTestCases?.map(tc => ({ input: tc.input, output: tc.expectedOutput })) || []}
- />
- </ResizablePanel>
-
- </ResizablePanelGroup>
- </main>
- </div>
- );
+          <ResizablePanel defaultSize={62} minSize={30} className="flex flex-col bg-white border-[4px] border-retro-ink shadow-[4px_4px_0px_rgba(15,23,42,1)] overflow-hidden">
+            <CodeEditorPanel
+              code={code}
+              setCode={handleCodeChange}
+              language={lang}
+              onLanguageChange={setLang}
+              onRun={(c) => run(c, '')}
+              onSubmit={(c) => submit(c)}
+              onResetCode={() => setCode('')}
+              isRunning={running}
+              isSubmitting={submitting}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </main>
+    </div>
+  );
 }

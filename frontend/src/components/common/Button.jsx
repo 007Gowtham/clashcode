@@ -18,22 +18,22 @@ const Button = forwardRef(
   ) => {
     const variantClasses = {
       primary:
-        'bg-gray-900 text-white hover:bg-gray-900/90 active:bg-gray-950 disabled:bg-gray-400',
+        'border-2 border-retro-ink bg-retro-orange text-white shadow-retro hover:bg-retro-ink active:translate-x-0.5 active:translate-y-0.5 active:shadow-retro-sm disabled:bg-retro-muted disabled:shadow-none',
       secondary:
-        'bg-gray-500 text-white hover:bg-gray-500/90 active:bg-gray-600 disabled:bg-gray-400',
+        'border-2 border-retro-ink bg-retro-paper text-retro-ink shadow-retro hover:bg-retro-ink hover:text-white active:translate-x-0.5 active:translate-y-0.5 active:shadow-retro-sm disabled:opacity-50 disabled:shadow-none',
       outline:
-        'border-2 border-gray-900 text-gray-900 hover:bg-gray-50 active:bg-gray-100 disabled:border-gray-400 disabled:text-gray-400',
+        'border-2 border-retro-ink bg-transparent text-retro-ink shadow-retro-sm hover:bg-retro-paper active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50',
       ghost:
-        'text-gray-900 hover:bg-gray-50 active:bg-gray-100 disabled:text-gray-400',
+        'border-2 border-transparent text-retro-muted hover:border-retro-ink hover:text-retro-ink hover:bg-retro-paper disabled:opacity-50',
       danger:
-        'bg-red-600 text-white hover:bg-red-600/90 active:bg-red-700 disabled:bg-red-400',
+        'border-2 border-retro-ink bg-red-600 text-white shadow-retro hover:bg-red-700 active:translate-x-0.5 active:translate-y-0.5 active:shadow-retro-sm disabled:opacity-50 disabled:shadow-none',
     };
 
     const sizeClasses = {
-      sm: 'py-1.5 px-3 text-sm rounded-md h-8',
-      md: 'px-4 py-2 text-sm rounded-md h-10',
-      lg: 'px-6 py-3 text-base rounded-md h-12',
-      full: ' rounded-full ',
+      sm: 'py-1.5 px-3 text-xs font-black uppercase tracking-wide',
+      md: 'px-5 py-2.5 text-sm font-black uppercase tracking-wide',
+      lg: 'px-8 py-4 text-base font-black uppercase tracking-wide',
+      full: 'w-full py-3 text-sm font-black uppercase tracking-wide',
     };
 
     return (
@@ -41,32 +41,27 @@ const Button = forwardRef(
         ref={ref}
         suppressHydrationWarning={true}
         className={`
-      
           whitespace-nowrap
-        
-          font-medium
+          font-black
+          uppercase
+          tracking-wide
           transition-all
-          duration-300
+          duration-150
           flex
           items-center
-          gap-1
+          gap-2
           justify-center
-           bg-gradient-to-br from-[#0f0f14] via-[#16161d] to-[#1f1f2b]
-          shadow-2xl
-        
           focus-visible:outline-none
           focus-visible:ring-2
-          focus-visible:ring-gray-900
+          focus-visible:ring-retro-orange
           focus-visible:ring-offset-2
           disabled:pointer-events-none
-          disabled:opacity-50
           [&_svg]:pointer-events-none
           [&_svg]:size-4
           [&_svg]:shrink-0
           ${variantClasses[variant]}
           ${sizeClasses[size]}
           ${className}
-         
         `}
         disabled={disabled || isLoading}
         {...props}

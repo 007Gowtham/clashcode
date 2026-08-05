@@ -28,176 +28,178 @@ export default function TeamCard({ team, onJoinTeam, onLeaveTeam, onReady, onKic
  // All-ready: every filled slot is ready
  const allReady = filledSlots > 0 && (team.members || []).every(m => m.isReady);
 
+  const bgColors = [
+    'bg-yellow-300',
+    'bg-green-300',
+    'bg-cyan-300',
+    'bg-pink-300',
+    'bg-purple-300',
+    'bg-orange-300',
+    'bg-retro-paper'
+  ];
+  
+  const charSum = (team.id || team._id || team.name || 'a').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const bgColor = bgColors[charSum % bgColors.length];
+
   return (
   <div
-  className={`flex flex-col bg-white dark:bg-[#1e1e1e] rounded-xl p-5 transition-all duration-300 ${
-  isMyTeam && allReady
-  ? 'border-2 border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20 shadow-[0_0_0_4px_rgba(16,185,129,0.08)]'
+  className={`relative flex border-[3px] border-retro-ink transition-all duration-300 shadow-[6px_6px_0px_rgba(15,23,42,1)] ${
+  isDisabled
+  ? 'bg-slate-200 opacity-60 grayscale pointer-events-none select-none'
+  : isMyTeam && allReady
+  ? 'bg-retro-mint rotate-[-1deg]'
   : isMyTeam
-  ? 'border-2 border-slate-900 dark:border-white'
-  : isDisabled
-  ? 'border border-slate-100 dark:border-[#2d2d2d] opacity-40 dark:opacity-20 grayscale pointer-events-none select-none'
-  : 'border border-slate-200 dark:border-[#2d2d2d] hover:border-slate-300 dark:hover:border-[#3d3d3d]'
+  ? 'bg-retro-yellow rotate-[1deg]'
+  : `${bgColor} hover:-translate-y-1 hover:shadow-[8px_8px_0px_rgba(15,23,42,1)]`
   }`}
   >
-  {/* ── Header ── */}
-  <div className="flex items-start justify-between w-full mb-4">
-  <div className="flex flex-col gap-0.5">
-  <div className="flex items-center gap-2">
-  {/* Team icon */}
-  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${
-  allReady && isMyTeam 
-    ? 'bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800' 
-    : 'bg-slate-100 border-slate-200 dark:bg-[#2c2c2c] dark:border-[#3c3c3c]'
-  }`}>
-  {isPublic
-  ? <Users className={`w-4 h-4 ${allReady && isMyTeam ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`} strokeWidth={1.8} />
-  : <Shield className="w-4 h-4 text-slate-600 dark:text-slate-300" strokeWidth={1.8} />
-  }
+  {/* Left Bar / Spine */}
+  <div className="w-8 shrink-0 border-r-[3px] border-retro-ink bg-retro-ink flex flex-col items-center justify-between py-4">
+  <div className="w-4 h-4 rounded-full bg-retro-paper border-2 border-retro-ink" />
+  <span className="text-white font-mono font-black text-xs tracking-[0.3em] uppercase [writing-mode:vertical-lr] rotate-180">
+  {isPublic ? 'PUBLIC SQUAD' : 'RESTRICTED'}
+  </span>
+  <div className="w-4 h-4 rounded-full bg-retro-paper border-2 border-retro-ink" />
   </div>
+
+  <div className="flex-1 flex flex-col p-4 relative">
+  {/* Vintage Stamp for Ready */}
+  {allReady && (
+  <div className="absolute top-2 right-4 border-4 border-retro-orange text-retro-orange px-2 py-1 rotate-[15deg] font-black font-mono text-xs uppercase tracking-widest opacity-80 pointer-events-none z-10">
+  LOCKED & LOADED
+  </div>
+  )}
+
+  {/* ── Header ── */}
+  <div className="flex items-start justify-between w-full mb-4 border-b-[3px] border-retro-ink border-dashed pb-3">
   <div>
-  <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+  <h3 className="text-2xl font-heading text-retro-ink uppercase tracking-tighter leading-none mb-1">
   {team.name}
   </h3>
-  {/* Team code — only for leader */}
-  {iAmLeader && (
-  <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-[#8c8c8c] tracking-widest uppercase">
-  Code: {team.code}
+  <div className={`mt-2 inline-flex items-center gap-2 bg-retro-yellow border-[3px] border-retro-ink px-2 py-1 shadow-[3px_3px_0px_rgba(15,23,42,1)] rotate-[-1deg] ${!iAmLeader ? 'opacity-60 grayscale' : ''}`}>
+    <span className="text-[9px] font-black font-sans uppercase tracking-widest text-retro-ink bg-white border-[2px] border-retro-ink px-1.5 py-0.5">
+      TEAM CODE
+    </span>
+    <span className="text-sm font-mono font-black text-retro-ink tracking-[0.2em]">
+      {iAmLeader ? (team.code || 'NO-CODE') : 'XXXXXX'}
+    </span>
+  </div>
+  </div>
+  
+  <div className="flex items-center gap-1.5 px-2 py-1 border-[2px] border-retro-ink bg-white shadow-[2px_2px_0px_rgba(15,23,42,1)]">
+  <Users className="w-3 h-3 text-retro-ink" strokeWidth={3} />
+  <span className="text-[10px] font-mono font-black uppercase text-retro-ink">
+  {filledSlots}/{maxSize}
   </span>
-  )}
-  </div>
-  </div>
-  </div>
-
-  {/* Public/Private pill + all-ready badge */}
-  <div className="flex flex-col items-end gap-1 shrink-0">
-  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-[#2c2c2c] text-slate-500 dark:text-slate-400">
-  {isPublic ? 'Public' : 'Private'}
-  </span>
-  {allReady && (
-  <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
-  <CheckCircle2 className="w-3 h-3" /> All Ready
-  </span>
-  )}
   </div>
   </div>
 
-  {/* ── Player Slots ── */}
-  <div className="mb-4 w-full">
-  <p className="text-[10px] font-bold text-slate-400 dark:text-[#8c8c8c] uppercase tracking-widest mb-2">
-  {filledSlots}/{maxSize} Players
-  </p>
-  <div className="flex flex-col gap-1.5">
-  {(team.members || []).map((member, i) => (
-  <div
-  key={member.id || i}
-  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all ${
-  member.isReady
-  ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40'
-  : 'bg-slate-50 dark:bg-[#262626] border-slate-100 dark:border-[#333333]'
-  }`}
-  >
-  {/* Avatar */}
-  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-  member.isReady 
-    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' 
-    : 'bg-slate-200 text-slate-600 dark:bg-[#333333] dark:text-[#eff1f6]'
-  }`}>
-  {member.name?.[0]?.toUpperCase() || '?'}
-  </div>
+  {/* ── Player Slots (Floating Block Style) ── */}
+  <div className="mb-4 flex-1 flex flex-col gap-2">
+  {(team.members || []).map((member, i) => {
+    const slotColors = [
+      'bg-[#ff90e8]', // Pink
+      'bg-[#00e5ff]', // Cyan
+      'bg-[#b2ff59]', // Lime
+      'bg-[#ffd740]', // Amber
+    ];
+    const rowColor = slotColors[i % slotColors.length];
 
-  <span className="text-sm font-semibold text-slate-800 dark:text-white leading-none flex-1 truncate">
-  {member.name}
-  </span>
+    return (
+    <div
+    key={member.id || i}
+    className={`flex items-center gap-2 px-2 py-1.5 border-[2px] border-retro-ink shadow-[2px_2px_0px_rgba(15,23,42,1)] transition-transform hover:-translate-y-0.5 ${
+    member.isReady ? rowColor : 'bg-white'
+    }`}
+    >
+    <div className={`w-6 h-6 flex items-center justify-center text-[12px] font-black border-2 border-retro-ink ${member.isReady ? 'bg-white text-retro-ink' : 'bg-retro-ink text-white'} shrink-0 rotate-[-3deg]`}>
+    {member.name?.[0]?.toUpperCase() || '?'}
+    </div>
 
-  <div className="flex items-center gap-1.5 ml-auto">
-  {member.isReady && (
-  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-  )}
-  {member.name === 'You' && (
-  <Badge className="bg-blue-600 text-white">YOU</Badge>
-  )}
-  {member.isLeader && (
-  <Badge className="bg-slate-900 dark:bg-white dark:text-black text-white">LEADER</Badge>
-  )}
-  {iAmLeader && !member.isLeader && (
-  <button
-  onClick={(e) => {
-  e.stopPropagation();
-  onKickMember && onKickMember(member.id);
-  }}
-  className="p-1 rounded-md text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 transition-all shrink-0 ml-1.5"
-  title="Kick player"
-  >
-  <X className="w-3.5 h-3.5" />
-  </button>
-  )}
-  </div>
-  </div>
-  ))}
+    <span className="text-xs font-mono font-black text-retro-ink uppercase tracking-tight flex-1 truncate ml-1">
+    {member.name}
+    </span>
 
-  {/* Empty slots */}
+    {member.isReady && (
+    <CheckCircle2 className="w-4 h-4 text-retro-ink shrink-0" strokeWidth={3} />
+    )}
+    {member.name === 'You' && (
+    <span className="text-[9px] font-mono font-black text-white bg-retro-blue px-1.5 py-0.5 ml-1 border-2 border-retro-ink shadow-[1px_1px_0px_rgba(15,23,42,1)] rotate-3">YOU</span>
+    )}
+    {member.isLeader && (
+    <span className="text-[9px] font-mono font-black text-retro-ink bg-retro-orange px-1.5 py-0.5 ml-1 border-2 border-retro-ink shadow-[1px_1px_0px_rgba(15,23,42,1)] rotate-[-2deg]">HQ</span>
+    )}
+    
+    {iAmLeader && !member.isLeader && (
+    <button
+    onClick={(e) => {
+    e.stopPropagation();
+    onKickMember && onKickMember(member.id);
+    }}
+    className="w-6 h-6 flex items-center justify-center bg-red-500 border-2 border-retro-ink text-white hover:bg-retro-ink shadow-[1px_1px_0px_rgba(15,23,42,1)] hover:translate-y-px hover:shadow-none transition-all ml-1"
+    title="Kick player"
+    >
+    <X className="w-3.5 h-3.5" strokeWidth={4} />
+    </button>
+    )}
+    </div>
+    );
+  })}
+
   {Array.from({ length: Math.max(0, emptySlots) }).map((_, i) => (
   <div
   key={`empty-${i}`}
-  className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50/50 dark:bg-[#1a1a1a]/30 border border-dashed border-slate-200 dark:border-[#333333]"
+  className="flex items-center gap-2 px-2 py-1.5 border-[2px] border-dashed border-retro-ink/40 bg-white/40 shadow-none"
   >
-  <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-[#262626] flex items-center justify-center">
-  <Plus className="w-3.5 h-3.5 text-slate-300 dark:text-[#333333]" strokeWidth={2} />
+  <div className="w-6 h-6 flex items-center justify-center bg-transparent border-2 border-dashed border-retro-ink/30 text-retro-ink/30 shrink-0">
+  <Plus className="w-3.5 h-3.5" strokeWidth={3} />
   </div>
-  <span className="text-xs text-slate-400 dark:text-[#8c8c8c] font-medium">
-  Open slot
+  <span className="text-[10px] font-mono font-bold text-retro-ink/50 uppercase tracking-widest ml-1">
+  EMPTY SLOT
   </span>
   </div>
   ))}
   </div>
-  </div>
 
   {/* ── Footer Actions ── */}
-  <div className="mt-auto w-full flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-[#2d2d2d]">
-  {/* Left: Join or Ready+Leave */}
-  <div className="flex items-center gap-2">
+  <div className="mt-auto w-full flex items-center gap-2">
   {!isMyTeam ? (
   <button
   onClick={() => onJoinTeam(team)}
   disabled={emptySlots === 0}
-  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#262626] text-slate-700 dark:text-white text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#333333] hover:border-slate-300 dark:hover:border-[#3d3d3d] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+  className="w-full flex justify-center items-center gap-2 px-4 py-2 border-[3px] border-retro-ink bg-retro-mint text-retro-ink text-sm font-black font-mono uppercase tracking-widest shadow-[3px_3px_0px_rgba(15,23,42,1)] hover:bg-white hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_rgba(15,23,42,1)] transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-x-1 disabled:translate-y-1 disabled:cursor-not-allowed"
   >
-  <Plus className="w-4 h-4" strokeWidth={2} />
-  Join
+  <Plus className="w-4 h-4" strokeWidth={3} /> JOIN SQUAD
   </button>
   ) : (
-  <>
-  {/* Ready toggle */}
+  <div className="flex w-full gap-2">
   <button
   onClick={() => onReady && onReady()}
-  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+  className={`flex-1 flex justify-center items-center gap-2 px-4 py-2 border-[3px] border-retro-ink text-sm font-black font-mono uppercase tracking-widest shadow-[3px_3px_0px_rgba(15,23,42,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_rgba(15,23,42,1)] transition-all ${
   iAmReady
-  ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-black dark:hover:bg-emerald-400'
-  : 'border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#262626] text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-[#333333] hover:border-slate-300 dark:hover:border-[#3d3d3d]'
+  ? 'bg-retro-orange text-white'
+  : 'bg-retro-ink text-white hover:bg-retro-blue'
   }`}
   >
-  <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
-  {iAmReady ? 'Ready!' : 'Ready Up'}
+  {iAmReady ? (
+  <>
+  <CheckCircle2 className="w-4 h-4" strokeWidth={3} /> LOCKED IN
+  </>
+  ) : (
+  'READY UP'
+  )}
   </button>
 
-  {/* Leave */}
   <button
   onClick={() => onLeaveTeam()}
-  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900/40 bg-red-50 dark:bg-[#3a1d1d] text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-100 dark:hover:bg-[#4a2424] hover:text-red-700 dark:hover:text-red-300 transition-all"
+  className="flex items-center justify-center gap-1 shrink-0 px-3 border-[3px] border-retro-ink bg-red-500 text-white font-mono font-black text-xs shadow-[3px_3px_0px_rgba(15,23,42,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_rgba(15,23,42,1)] transition-all uppercase"
+  title="Leave Team"
   >
-  <LogOut className="w-4 h-4" strokeWidth={2} />
-  Leave
+  <LogOut className="w-3.5 h-3.5" strokeWidth={3} /> LEAVE
   </button>
-  </>
+  </div>
   )}
   </div>
-
-  {/* Right: Slots remaining */}
-  <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-  <Users className="w-3.5 h-3.5 text-slate-400 dark:text-[#8c8c8c]" strokeWidth={2} />
-  {emptySlots} {emptySlots === 1 ? 'slot' : 'slots'} left
-  </span>
   </div>
   </div>
   );

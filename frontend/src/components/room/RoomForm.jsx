@@ -2,28 +2,33 @@
 import { useState } from 'react';
 import { Hash, LayoutGrid, Clock, BarChart2 } from 'lucide-react';
 
-const SectionLabel = ({ icon: Icon, label }) => (
-  <div className="flex items-center gap-2 mb-3">
-    <Icon size={14} className="text-slate-400 dark:text-[#8c8c8c]" />
-    <span className="text-xs font-semibold text-slate-500 dark:text-[#8c8c8c]">
+const SectionLabel = ({ icon: Icon, label, bgColor = 'bg-retro-paper', textColor = 'text-retro-ink' }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className={`w-8 h-8 flex items-center justify-center border-2 border-retro-ink shadow-retro-sm ${bgColor}`}>
+      <Icon size={14} className={textColor} strokeWidth={3} />
+    </div>
+    <span className="font-mono text-xs font-black uppercase tracking-widest text-retro-ink">
       {label}
     </span>
   </div>
 );
 
-const RoomForm = ({ onSubmit, isLoading = false }) => {
- const [formData, setFormData] = useState({
- roomName: '',
- questionsPerUser: 1,
- maxTeamSize: 4,
- timeLimitMinutes: 30,
- difficulty: 'MIXED'
- });
+const inputClass =
+  "w-full px-4 py-3 bg-white border-2 border-retro-ink text-retro-ink font-sans font-bold shadow-retro-sm focus:outline-none focus:border-retro-orange focus:translate-y-[-2px] focus:shadow-retro transition-all disabled:opacity-50";
 
- const handleSubmit = (e) => {
- e.preventDefault();
- onSubmit(formData);
- };
+const RoomForm = ({ onSubmit, isLoading = false }) => {
+  const [formData, setFormData] = useState({
+    roomName: '',
+    questionsPerUser: 1,
+    maxTeamSize: 4,
+    timeLimitMinutes: 30,
+    difficulty: 'MIXED',
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
 
   const difficultyOptions = [
     { value: 'EASY', label: 'Easy' },
@@ -32,16 +37,16 @@ const RoomForm = ({ onSubmit, isLoading = false }) => {
     { value: 'MIXED', label: 'Mixed (Recommended)' },
   ];
 
-  const inputClass = "w-full px-4 py-2 bg-[#fafafa] dark:bg-[#262626] border border-[#d9d9d9] dark:border-[#333333] rounded-lg text-sm text-[#262626] dark:text-white placeholder-[#bfbfbf] dark:placeholder-[#8c8c8c] focus:outline-none focus:border-[#262626] dark:focus:border-[#ffa116] focus:bg-[#fafafa] dark:focus:bg-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-all disabled:opacity-50";
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 py-2 text-[#262626] dark:text-[#eff1f6]">
+    <form onSubmit={handleSubmit} className="space-y-8 text-retro-ink">
 
       {/* Room Name */}
-      <div>
-        <SectionLabel icon={Hash} label="Room Identity" />
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-500 dark:text-[#8c8c8c]">Room Name</label>
+      <div className="border-2 border-retro-ink bg-retro-paper p-6 shadow-retro-sm relative">
+        <SectionLabel icon={Hash} label="Room Identity" bgColor="bg-retro-blue" textColor="text-white" />
+        <div className="space-y-2">
+          <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-retro-muted">
+            Room Name
+          </label>
           <input
             type="text"
             value={formData.roomName}
@@ -57,11 +62,13 @@ const RoomForm = ({ onSubmit, isLoading = false }) => {
       </div>
 
       {/* Configuration Grid */}
-      <div>
-        <SectionLabel icon={LayoutGrid} label="Match Configuration" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-gray-500 dark:text-[#8c8c8c]">Questions per Player</label>
+      <div className="border-2 border-retro-ink bg-retro-paper p-6 shadow-retro-sm">
+        <SectionLabel icon={LayoutGrid} label="Match Configuration" bgColor="bg-retro-mint" textColor="text-white" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-retro-muted">
+              Questions per Player
+            </label>
             <input
               type="number"
               value={formData.questionsPerUser}
@@ -73,8 +80,10 @@ const RoomForm = ({ onSubmit, isLoading = false }) => {
               className={inputClass}
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-gray-500 dark:text-[#8c8c8c]">Max Team Size</label>
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-retro-muted">
+              Max Team Size
+            </label>
             <input
               type="number"
               value={formData.maxTeamSize}
@@ -89,49 +98,55 @@ const RoomForm = ({ onSubmit, isLoading = false }) => {
         </div>
       </div>
 
-      {/* Duration */}
-      <div>
-        <SectionLabel icon={Clock} label="Time Limit" />
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-500 dark:text-[#8c8c8c]">Duration (minutes)</label>
-          <input
-            type="number"
-            value={formData.timeLimitMinutes}
-            min={10}
-            max={180}
-            onChange={(e) => setFormData({ ...formData, timeLimitMinutes: parseInt(e.target.value) })}
-            required
-            disabled={isLoading}
-            className={inputClass}
-          />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Duration */}
+        <div className="border-2 border-retro-ink bg-retro-paper p-6 shadow-retro-sm">
+          <SectionLabel icon={Clock} label="Time Limit" bgColor="bg-retro-yellow" textColor="text-retro-ink" />
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-retro-muted">
+              Duration (minutes)
+            </label>
+            <input
+              type="number"
+              value={formData.timeLimitMinutes}
+              min={10}
+              max={180}
+              onChange={(e) => setFormData({ ...formData, timeLimitMinutes: parseInt(e.target.value) })}
+              required
+              disabled={isLoading}
+              className={inputClass}
+            />
+          </div>
+        </div>
+
+        {/* Difficulty */}
+        <div className="border-2 border-retro-ink bg-retro-paper p-6 shadow-retro-sm">
+          <SectionLabel icon={BarChart2} label="Difficulty" bgColor="bg-retro-orange" textColor="text-white" />
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-retro-muted">
+              Difficulty Level
+            </label>
+            <select
+              value={formData.difficulty}
+              onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+              disabled={isLoading}
+              className={`${inputClass} cursor-pointer appearance-none`}
+            >
+              {difficultyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Difficulty */}
-      <div>
-        <SectionLabel icon={BarChart2} label="Difficulty" />
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-gray-500 dark:text-[#8c8c8c]">Difficulty Level</label>
-          <select
-            value={formData.difficulty}
-            onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-            disabled={isLoading}
-            className="w-full px-4 py-2.5 bg-[#fafafa] dark:bg-[#262626] border border-[#d9d9d9] dark:border-[#333333] rounded-lg text-sm text-[#262626] dark:text-white focus:outline-none focus:border-[#262626] dark:focus:border-[#ffa116] focus:bg-[#fafafa] dark:focus:bg-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-all cursor-pointer font-medium disabled:opacity-50"
-          >
-            {difficultyOptions.map((option) => (
-              <option key={option.value} value={option.value} className="bg-white dark:bg-[#1e1e1e]">
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="pt-6 border-t border-slate-100 dark:border-[#2d2d2d]">
+      <div className="pt-4">
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-2.5 bg-[#262626] dark:bg-[#ffa116] hover:bg-[#333333] dark:hover:bg-[#e08e12] active:bg-black dark:active:bg-[#1a1a1a] text-white dark:text-black rounded-lg text-sm font-semibold tracking-wide transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-4 bg-retro-orange border-2 border-retro-ink text-white font-sans font-black uppercase tracking-tight text-lg shadow-retro hover:bg-retro-ink active:translate-x-0.5 active:translate-y-0.5 active:shadow-retro-sm transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'Creating Room...' : 'Create Room'}
         </button>
